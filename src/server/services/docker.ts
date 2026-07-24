@@ -1,0 +1,418 @@
+import Docker from "dockerode";
+import fs from "fs-extra";
+import path from "path";
+import crypto from "crypto";
+import { io } from "../../../server.js"; // Import socket for logs
+import { readJSON } from "./db.js";
+
+export const isSandbox = !fs.existsSync("/var/run/docker.sock") && process.platform !== "win32";
+
+export const docker = new Docker({ socketPath: process.platform === 'win32' ? '//./pipe/docker_engine' : '/var/run/docker.sock' });
+
+// Mock state for sandbox demo
+const mockState: Record<string, boolean> = {};
+
+// Tracks servers we're expecting to stop because a user explicitly requested
+// it (stop/restart/delete), so the crash-detection logic in
+// attachContainerSocket can tell a normal stop apart from an unexpected
+// crash and only notify on the latter.
+const expectedStops = new Set<string>();
+export const markExpectedStop = (containerId: string) => expectedStops.add(containerId);
+
+export const getVersions = async (type: string = "PAPER") => {
+  const normalizedType = type.toUpperCase();
+  if (normalizedType === "VELOCITY") {
+    return ["latest", "3.3.0-SNAPSHOT"];
+  }
+  if (normalizedType === "BUNGEECORD" || normalizedType === "WATERFALL") {
+    return ["latest"];
+  }
+  
+  return [
+    "latest", "1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6", "1.21.5", "1.21.4", "1.21.3", "1.21.1", "1.21", 
+    "1.20.6", "1.20.5", "1.20.4", "1.20.2", "1.20.1", "1.20", 
+    "1.19.4", "1.19.3", "1.19.2", "1.19.1", "1.19", 
+    "1.18.2", "1.18.1", "1.18", "1.17.1", "1.17", "1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.15.2", "1.15.1", "1.15", 
+    "1.14.4", "1.14.3", "1.14.2", "1.14.1", "1.14", "1.13.2", "1.13.1", "1.13", "1.12.2", "1.12.1", "1.12", "1.11.2", "1.10.2", 
+    "1.9.4", "1.8.8", "1.7.10"
+  ];
+};
+
+const DOCKER_IMAGE = "itzg/minecraft-server";
+
+export const createServerContainer = async (serverData: any) => {
+  if (isSandbox) {
+    mockState[serverData.id] = false;
+    return "mock-container-id-" + serverData.id;
+  }
+
+  const serverType = serverData.type || "PAPER";
+  const isProxy = ["VELOCITY", "BUNGEECORD", "WATERFALL"].includes(serverType.toUpperCase());
+  const dockerImage = isProxy
+    ? "itzg/bungeecord" 
+    : "itzg/minecraft-server";
+
+  // Pull image if not exists
+  console.log(`Ensuring ${dockerImage} is pulled...`);
+  await new Promise((resolve, reject) => {
+    docker.pull(dockerImage, (err: any, stream: any) => {
+      if (err) return reject(err);
+      docker.modem.followProgress(stream, onFinished, onProgress);
+      function onFinished(err: any, output: any) {
+        if (err) return reject(err);
+        resolve(output);
+      }
+      function onProgress(event: any) {}
+    });
+  });
+
+  const serverDir = path.join(process.cwd(), ".data", "servers", serverData.id);
+  await fs.ensureDir(serverDir);
+
+  const envVars = [
+    `TYPE=${serverType}`,
+    `VERSION=${serverData.version}`,
+    `MEMORY=${serverData.ram}G`,
+    `INIT_MEMORY=128M`,
+    `SERVER_PORT=${serverData.port}`,
+  ];
+
+  if (!isProxy) {
+    const rconPassword = crypto.randomBytes(16).toString("hex");
+    envVars.push(
+      `EULA=TRUE`,
+      `ENABLE_RCON=true`,
+      `RCON_PASSWORD=${rconPassword}`,
+      `JVM_OPTS=-DPaper.IgnoreWorldDataVersion=true`,
+      `JVM_DD_OPTS=Paper.IgnoreWorldDataVersion=true,paper.ignoreWorldDataVersion=true`
+    );
+  }
+
+  const container = await docker.createContainer({
+    Image: dockerImage,
+    name: `frostbyte-server-${serverData.id}`,
+    Tty: true,
+    OpenStdin: true,
+    StdinOnce: false,
+    Env: envVars,
+    ExposedPorts: {
+      [`${serverData.port}/tcp`]: {}
+    },
+    HostConfig: {
+      PortBindings: {
+        [`${serverData.port}/tcp`]: [
+          {
+            HostPort: `${serverData.port}`
+          }
+        ]
+      },
+      Binds: [`${serverDir}:${isProxy ? '/server' : '/data'}`],
+      ...buildResourceLimits(serverData),
+    }
+  });
+
+  return container.id;
+};
+
+/**
+ * Translates the panel's stored limit fields into real Docker HostConfig
+ * resource constraints, so a server's "RAM limit" and "CPU limit" are
+ * actually enforced by the container runtime — not just passed as a hint
+ * to the JVM inside the container, which a misbehaving or non-JVM process
+ * could ignore entirely. This matters most on a shared/public host, where
+ * one tenant's container should never be able to starve another's.
+ *
+ * - ram is stored in GB. A small headroom margin isn't added here — the
+ *   admin-set number is treated as the hard ceiling.
+ * - cpu is stored as a percentage of one core (100 = 1 full core), matching
+ *   how it's already displayed in the UI. Docker's NanoCpus wants a
+ *   fractional core count in units of 1e9.
+ */
+function buildResourceLimits(serverData: any): { Memory?: number; NanoCpus?: number; MemorySwap?: number } {
+  const limits: { Memory?: number; NanoCpus?: number; MemorySwap?: number } = {};
+
+  const ramGb = Number(serverData.ram);
+  if (Number.isFinite(ramGb) && ramGb > 0) {
+    const bytes = Math.round(ramGb * 1024 * 1024 * 1024);
+    limits.Memory = bytes;
+    // Disable swap beyond the memory limit so a container can't silently
+    // exceed its RAM allocation by spilling to disk swap.
+    limits.MemorySwap = bytes;
+  }
+
+  const cpuPercent = Number(serverData.cpu);
+  if (Number.isFinite(cpuPercent) && cpuPercent > 0) {
+    limits.NanoCpus = Math.round((cpuPercent / 100) * 1_000_000_000);
+  }
+
+  return limits;
+}
+
+/**
+ * Live-updates the CPU/RAM limits on a running or stopped container without
+ * recreating it. Used when an admin adjusts a server's resource limits
+ * after creation.
+ */
+export const updateContainerResources = async (containerId: string, ram?: number, cpu?: number) => {
+  if (isSandbox) return;
+
+  const update: { Memory?: number; MemorySwap?: number; NanoCpus?: number } = {};
+  if (ram !== undefined && Number.isFinite(ram) && ram > 0) {
+    const bytes = Math.round(ram * 1024 * 1024 * 1024);
+    update.Memory = bytes;
+    update.MemorySwap = bytes;
+  }
+  if (cpu !== undefined && Number.isFinite(cpu) && cpu > 0) {
+    update.NanoCpus = Math.round((cpu / 100) * 1_000_000_000);
+  }
+
+  if (Object.keys(update).length === 0) return;
+
+  const container = docker.getContainer(containerId);
+  await container.update(update);
+};
+
+export const startContainer = async (containerId: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    mockState[id] = true;
+    
+    // In sandbox mode, mock the generation of server files that the docker container would normally do
+    try {
+      const servers = await readJSON("servers.json") || [];
+      const server = servers.find((s: any) => s.id === id);
+      if (server) {
+        const serverDir = path.join(process.cwd(), ".data", "servers", id);
+        await fs.ensureDir(serverDir);
+        const type = (server.type || "PAPER").toUpperCase();
+        
+        if (["VELOCITY", "BUNGEECORD", "WATERFALL"].includes(type)) {
+          const configName = type === "VELOCITY" ? "velocity.toml" : "config.yml";
+          const configPath = path.join(serverDir, configName);
+          if (!fs.existsSync(configPath)) {
+            await fs.writeFile(configPath, "# Autogenerated proxy config in sandbox mode\n# Port: " + server.port + "\n");
+          }
+        } else {
+          const propsPath = path.join(serverDir, "server.properties");
+          if (!fs.existsSync(propsPath)) {
+            await fs.writeFile(propsPath, "server-port=" + server.port + "\nmotd=A Minecraft Server\n");
+          }
+        }
+      }
+    } catch(e) {}
+    
+    io.to(`server_${id}`).emit("log", `[System] Server started (Sandbox Mode).\r\n`);
+    return;
+  }
+  const container = docker.getContainer(containerId);
+  await container.start();
+};
+
+export const stopContainer = async (containerId: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    mockState[id] = false;
+    io.to(`server_${id}`).emit("log", `[System] Server stopped (Sandbox Mode).\r\n`);
+    return;
+  }
+  markExpectedStop(containerId);
+  const container = docker.getContainer(containerId);
+  await container.stop();
+};
+
+export const restartContainer = async (containerId: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    mockState[id] = true;
+    io.to(`server_${id}`).emit("log", `[System] Server restarted (Sandbox Mode).\r\n`);
+    return;
+  }
+  markExpectedStop(containerId);
+  const container = docker.getContainer(containerId);
+  await container.restart();
+};
+
+export const deleteContainer = async (containerId: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    delete mockState[id];
+    return;
+  }
+  markExpectedStop(containerId);
+  const container = docker.getContainer(containerId);
+  try {
+    const info = await container.inspect();
+    if (info.State.Running) {
+      await container.stop();
+    }
+    await container.remove({ force: true });
+  } catch (err) {
+    console.error("Error deleting container", err);
+  }
+};
+
+export const getContainerStatus = async (containerId: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    const isRunning = mockState[id] || false;
+    return { State: { Running: isRunning, Status: isRunning ? "running" : "exited" } };
+  }
+  try {
+    const container = docker.getContainer(containerId);
+    const info = await container.inspect();
+    return info;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const getContainerStats = async (containerId: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    if (!mockState[id]) return { cpu: 0, ram: 0, disk: 0 };
+    
+    // Stable pseudo-random mock stats based on time so it fluctuates realistically
+    const timeSec = Math.floor(Date.now() / 5000);
+    const floatPseudo = (Math.sin(timeSec + id.charCodeAt(0)) + 1) / 2; // 0 to 1
+    
+    return {
+      cpu: floatPseudo * 10 + 2, // 2% to 12%
+      ram: 600 + (floatPseudo * 50 - 25), // ~600 MB
+      disk: 2.1
+    };
+  }
+  try {
+    const container = docker.getContainer(containerId);
+    const info = await container.inspect();
+    if (!info.State.Running) {
+      return { cpu: 0, ram: 0, disk: 0 };
+    }
+    const statsResult = await container.stats({ stream: false });
+    
+    let cpuPercent = 0.0;
+    try {
+      const cpuDelta = statsResult.cpu_stats.cpu_usage.total_usage - statsResult.precpu_stats.cpu_usage.total_usage;
+      const systemDelta = statsResult.cpu_stats.system_cpu_usage - statsResult.precpu_stats.system_cpu_usage;
+      if (systemDelta > 0.0 && cpuDelta > 0.0) {
+        const cpus = statsResult.cpu_stats.online_cpus || statsResult.cpu_stats.cpu_usage.percpu_usage?.length || 1;
+        cpuPercent = (cpuDelta / systemDelta) * cpus * 100.0;
+      }
+    } catch(e) {}
+
+    let ramMB = 0.0;
+    try {
+      const stats = statsResult.memory_stats.stats as any || {};
+      const cache = stats.cache || stats.inactive_file || stats.total_inactive_file || 0;
+      const usedMemory = statsResult.memory_stats.usage - cache;
+      ramMB = usedMemory / 1024 / 1024;
+    } catch(e) {}
+
+    // Roughly calculate disk size from the volume directory if possible, or provide a default for now.
+    return {
+      cpu: cpuPercent,
+      ram: ramMB,
+      disk: 2.1
+    };
+  } catch (e) {
+    return { cpu: 0, ram: 0, disk: 0 };
+  }
+};
+
+export const getContainerLogs = async (containerId: string): Promise<string> => {
+  if (isSandbox) return "[System] Sandbox mode. No historical logs available.\r\n";
+  try {
+    const container = docker.getContainer(containerId);
+    
+    // Convert Buffer log output to string safely. dockerode returns interleaved multiplexed streams if tty is false,
+    // but we use tty: true in createServerContainer, so it's a raw stream buffer.
+    const logsBuffer = await container.logs({ stdout: true, stderr: true, tail: 100 });
+    return logsBuffer.toString('utf8');
+  } catch (e) {
+    return "";
+  }
+};
+
+const activeStreams: Record<string, NodeJS.ReadWriteStream> = {};
+
+export const attachContainerSocket = async (containerId: string, serverId: string) => {
+  if (isSandbox) {
+    return;
+  }
+  try {
+    const container = docker.getContainer(containerId);
+    if (!activeStreams[containerId]) {
+      const stream = await container.attach({ stream: true, stdout: true, stderr: true, stdin: true });
+      activeStreams[containerId] = stream;
+      stream.on('data', (chunk) => {
+        io.to(`server_${serverId}`).emit("log", chunk.toString());
+      });
+      stream.on('end', async () => {
+        delete activeStreams[containerId];
+
+        const wasExpected = expectedStops.delete(containerId);
+        if (wasExpected) return;
+
+        // Stream ended without us having asked for a stop — likely a crash.
+        // Give the daemon a moment to record the exit, then check.
+        try {
+          await new Promise((r) => setTimeout(r, 1500));
+          const info = await container.inspect();
+          if (info.State && !info.State.Running && info.State.ExitCode !== 0) {
+            const { updateJSON, readJSON } = await import("./db.js");
+            let crashedServer: any = null;
+            await updateJSON("servers.json", (current: any[]) => {
+              const servers = current || [];
+              const server = servers.find((s: any) => s.id === serverId);
+              if (server) {
+                server.status = "offline";
+                crashedServer = server;
+              }
+              return servers;
+            });
+
+            if (crashedServer) {
+              const { notifyUser } = await import("./notifications.js");
+              const recipients = [crashedServer.owner, ...(crashedServer.subUsers || []).map((su: any) => su.userId)].filter(Boolean);
+              for (const uid of recipients) {
+                notifyUser(uid, {
+                  type: "error",
+                  title: "Server stopped unexpectedly",
+                  message: `"${crashedServer.name}" exited with code ${info.State.ExitCode}. Check the console for details.`,
+                  serverId,
+                  link: `/servers/${serverId}`,
+                }).catch(() => {});
+              }
+            }
+          }
+        } catch (inspectErr) {
+          console.error("Crash-detection inspect failed:", inspectErr);
+        }
+      });
+    }
+  } catch(e) {
+    console.error("Attach error", e);
+  }
+};
+
+export const sendContainerCommand = async (containerId: string, command: string) => {
+  if (isSandbox) {
+    const id = containerId.replace("mock-container-id-", "");
+    io.to(`server_${id}`).emit("log", `> ${command}\r\n`);
+    return;
+  }
+  if (activeStreams[containerId]) {
+    activeStreams[containerId].write(command + "\n");
+  } else {
+    try {
+      const container = docker.getContainer(containerId);
+      const stream = await container.attach({ stream: true, stdout: true, stderr: true, stdin: true });
+      activeStreams[containerId] = stream;
+      stream.write(command + "\n");
+      stream.on('data', (chunk) => {
+        // Will be broadcasted due to existing or new attach
+      });
+    } catch(e) {
+       console.error("Command error", e);
+    }
+  }
+};

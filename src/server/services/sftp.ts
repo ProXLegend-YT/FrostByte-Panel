@@ -10,7 +10,7 @@ const SSH2_OPEN_MODE = (ssh2 as any).SFTP_OPEN_MODE || {
 import crypto from "crypto";
 import fs from "fs-extra";
 import path from "path";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { readJSON, writeJSON } from "./db.js";
 
 /**

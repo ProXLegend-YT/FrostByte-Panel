@@ -13,12 +13,10 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
-    "@types/bcrypt": "^6.0.0",
     "@types/ssh2": "^1.15.5",
     "@vitejs/plugin-react": "^5.0.4",
     "archiver": "^8.0.0",
     "axios": "^1.18.0",
-    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "cors": "^2.8.6",

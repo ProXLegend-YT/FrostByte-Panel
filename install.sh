@@ -239,6 +239,17 @@ do_install() {
       ;;
     *)
       PANEL_DOMAIN=""
+      # Detect this server's actual reachable address so ALLOWED_ORIGINS can
+      # be set correctly automatically — leaving it blank in production
+      # means the panel rejects every browser request with a CORS error,
+      # which is exactly the trap this branch used to fall into.
+      if $IS_TERMUX; then
+        DETECTED_HOST="localhost"
+      else
+        DETECTED_HOST=$(curl -4 -s --max-time 5 ifconfig.me || hostname -I 2>/dev/null | awk '{print $1}')
+      fi
+      DETECTED_HOST="${DETECTED_HOST:-localhost}"
+      ORIGIN="http://${DETECTED_HOST}:3000"
       ;;
   esac
 
@@ -246,13 +257,15 @@ do_install() {
   cp .env.example .env
   GENERATED_SECRET=$(random_hex 32)
   sed -i.bak "s/^JWT_SECRET=.*/JWT_SECRET=${GENERATED_SECRET}/" .env && rm -f .env.bak
-  sed -i.bak "s/^NODE_ENV=.*/NODE_ENV=production/" .env && rm -f .env.bak
+  # NODE_ENV is intentionally NOT set here — Vite's build step refuses to
+  # fully honor NODE_ENV=production from a .env file and warns about it,
+  # and it's redundant anyway: ecosystem.config.cjs already sets it
+  # correctly at runtime for PM2, independent of this file.
 
-  if [[ -n "${PANEL_DOMAIN:-}" ]]; then
-    sed -i.bak "s#^ALLOWED_ORIGINS=.*#ALLOWED_ORIGINS=${ORIGIN}#" .env && rm -f .env.bak
-    ok "ALLOWED_ORIGINS set to ${ORIGIN}"
-  else
-    warn "No domain set. ALLOWED_ORIGINS left blank — set it in .env before exposing this panel publicly."
+  sed -i.bak "s#^ALLOWED_ORIGINS=.*#ALLOWED_ORIGINS=${ORIGIN}#" .env && rm -f .env.bak
+  ok "ALLOWED_ORIGINS set to ${ORIGIN}"
+  if [[ -z "${PANEL_DOMAIN:-}" ]]; then
+    warn "No domain set — if you access the panel from a different address than ${ORIGIN} (e.g. a different IP, or 'localhost' vs your LAN IP), update ALLOWED_ORIGINS in .env to match exactly, then 'pm2 restart frostbyte-panel'."
   fi
 
   log "Building the panel..."

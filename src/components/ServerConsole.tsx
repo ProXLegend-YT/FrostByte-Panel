@@ -908,7 +908,7 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
             {!atBottom && logs.length > 0 && (
               <button
                 onClick={jumpToBottom}
-                className="qx-tail-in absolute bottom-32 right-5 z-20 flex items-center gap-1.5 qx-display text-[9px] font-bold uppercase tracking-[0.14em] px-3 py-1.5 bg-black/60 backdrop-blur-md text-emerald-300 border border-emerald-400/30 rounded-sm shadow-[0_4px_20px_-4px_rgba(52,211,153,0.4)] hover:bg-emerald-400/10 transition-colors"
+                className="qx-tail-in absolute bottom-32 right-5 z-20 flex items-center gap-1.5 qx-display text-[9px] font-bold uppercase tracking-[0.14em] px-3 py-1.5 bg-black/35 backdrop-blur-md text-emerald-300 border border-emerald-400/30 rounded-sm shadow-[0_4px_20px_-4px_rgba(52,211,153,0.4)] hover:bg-emerald-400/10 transition-colors"
               >
                 <ChevronDown size={11} className="animate-bounce" />
                 Tail

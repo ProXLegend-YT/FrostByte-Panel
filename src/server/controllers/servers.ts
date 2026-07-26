@@ -96,7 +96,7 @@ export const createServer = async (req: Request, res: Response) => {
   if (user.role !== "admin" && user.role !== "owner") {
     return res.status(403).json({ error: "Only admins can create servers" });
   }
-  const { name, ram, port, version, theme, cpu, disk, owner, ipAlias, type } = req.body;
+  const { name, ram, port, version, theme, cpu, disk, owner, ipAlias, type, game, discordToken, startCommand, serverPassword, srcdsToken } = req.body;
   if (!name || !ram || !port) {
     res.status(400).json({ error: "Missing required fields (name, ram, port)" });
     return;
@@ -108,8 +108,16 @@ export const createServer = async (req: Request, res: Response) => {
     return res.status(400).json({ error: `CPU must be between ${MIN_CPU_PERCENT}% and ${MAX_CPU_PERCENT}%` });
   }
 
+  const { getGameDefinition } = await import("../gameDefinitions.js");
+  const gameId = game || "minecraft";
+  try {
+    getGameDefinition(gameId); // throws if unknown — validate before creating anything
+  } catch {
+    return res.status(400).json({ error: `Unknown game type: ${gameId}` });
+  }
+
   const id = uuidv4();
-  const serverData = {
+  const serverData: any = {
     id,
     name,
     owner: owner || user.id, // Support assigning owner at creation
@@ -118,13 +126,28 @@ export const createServer = async (req: Request, res: Response) => {
     disk: disk || 10,
     port,
     ipAlias: ipAlias || "",
-    type: type || "PAPER",
-    version: version || "1.21.1",
+    game: gameId,
+    type: type || (gameId === "minecraft" ? "PAPER" : undefined),
+    version: version || (gameId === "minecraft" ? "1.21.1" : "latest"),
     theme: theme || "default",
     status: "installing",
     createdAt: new Date().toISOString(),
     containerId: null,
   };
+
+  // Discord bot-specific fields — kept off the base server record shape for
+  // other game types rather than always present-but-empty.
+  if (gameId === "discord-bot") {
+    if (discordToken) serverData.discordToken = discordToken;
+    if (startCommand) serverData.startCommand = startCommand;
+  }
+
+  if (["rust", "valheim", "ark", "palworld"].includes(gameId) && serverPassword) {
+    serverData.serverPassword = serverPassword;
+  }
+  if (gameId === "cs2" && srcdsToken) {
+    serverData.srcdsToken = srcdsToken;
+  }
 
   let portConflict = false;
   const servers = await updateJSON<any[]>("servers.json", (current) => {
@@ -511,6 +534,74 @@ export const updateServerResources = async (req: Request, res: Response) => {
     res.json({ success: true, ram: updatedRam, cpu: updatedCpu });
   } catch (err: any) {
     console.error("Update resources error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Updates a Discord bot server's start command (and optionally its token),
+ * then recreates the container so the new startup command actually takes
+ * effect. Unlike RAM/CPU, a container's Cmd can't be changed on a live
+ * container — Docker only lets you set it at creation — so this follows
+ * the same delete-and-recreate pattern as changeServerVersion.
+ */
+export const updateBotConfig = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { startCommand, discordToken } = req.body;
+    const user = (req as any).user;
+
+    const servers = await readJSON("servers.json") || [];
+    const server = servers.find((s: any) => s.id === id);
+    if (!server) return res.status(404).json({ error: "Server not found" });
+
+    if (server.game !== "discord-bot") {
+      return res.status(400).json({ error: "This server is not a Discord bot instance" });
+    }
+
+    const isOwner = server.owner === user.id;
+    const isAdmin = user.role === "admin" || user.role === "owner";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    if (startCommand !== undefined) server.startCommand = startCommand;
+    if (discordToken !== undefined && discordToken !== "") server.discordToken = discordToken;
+
+    // Recreate the container so the new Cmd/env actually applies. The
+    // server must be stopped first, same requirement as changing version.
+    if (server.containerId) {
+      const { getContainerStatus, deleteContainer, createServerContainer } = await import("../services/docker.js");
+      const status = await getContainerStatus(server.containerId).catch(() => null);
+      if (status?.State?.Running) {
+        return res.status(400).json({ error: "Stop the bot before changing its configuration." });
+      }
+      await deleteContainer(server.containerId);
+    }
+
+    const newContainerId = await createServerContainer(server);
+    server.containerId = newContainerId;
+
+    await updateJSON<any[]>("servers.json", (current) => {
+      const list = current || [];
+      const s = list.find((x: any) => x.id === id);
+      if (s) {
+        if (startCommand !== undefined) s.startCommand = startCommand;
+        if (discordToken !== undefined && discordToken !== "") s.discordToken = discordToken;
+        s.containerId = newContainerId;
+      }
+      return list;
+    });
+
+    logActivity({
+      actorId: user.id, actorUsername: user.username,
+      action: "server.resource_change", // reusing the closest existing "server config changed" activity type
+      target: server.name, serverId: id,
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Update bot config error:", err);
     res.status(500).json({ error: err.message });
   }
 };

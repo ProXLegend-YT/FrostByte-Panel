@@ -153,7 +153,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {COMMON_PROPERTIES.map((prop) => (
-            <div key={prop.key} className="bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden group hover:bg-black/60 transition-colors">
+            <div key={prop.key} className="bg-black/40 backdrop-blur-sm border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden group hover:bg-black/35 transition-colors">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-bold text-cyan-200 uppercase tracking-widest drop-shadow-sm mb-2 block">{prop.label}</label>
                 {prop.type === 'boolean' && (
@@ -176,7 +176,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                 <select
                   value={properties[prop.key] || ''}
                   onChange={(e) => handleChange(prop.key, e.target.value)}
-                  className="w-full bg-black/60 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
+                  className="w-full bg-black/35 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
                 >
                   {prop.options?.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -189,7 +189,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                   type="number"
                   value={properties[prop.key] || ''}
                   onChange={(e) => handleChange(prop.key, e.target.value)}
-                  className="w-full bg-black/60 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
+                  className="w-full bg-black/35 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
                 />
               )}
 
@@ -198,7 +198,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                   type="text"
                   value={properties[prop.key] || ''}
                   onChange={(e) => handleChange(prop.key, e.target.value)}
-                  className="w-full bg-black/60 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
+                  className="w-full bg-black/35 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
                 />
               )}
 
@@ -209,7 +209,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
 
         <div className="mt-8">
           <h3 className="text-lg font-black text-white tracking-tight drop-shadow-md mb-4 mt-8">Advanced Properties</h3>
-          <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 overflow-hidden">
+          <div className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
               {Object.keys(properties).filter(k => !COMMON_PROPERTIES.find(cp => cp.key === k)).map(key => (
                 <div key={key} className="flex flex-col">

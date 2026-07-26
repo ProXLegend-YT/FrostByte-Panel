@@ -17,12 +17,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex h-[100dvh] w-full bg-transparent text-zinc-100 font-sans overflow-hidden selection:bg-cyan-400/30">
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none" />
-          {/* Mounted invisibly here so real-time toast notifications still
-              appear on this page; the bell/dropdown itself lives in the
-              server-view tab bar layout, not duplicated here. */}
-          <div className="absolute top-3 right-4 z-20">
-            <NotificationBell />
-          </div>
           <main className="flex-1 w-full h-full relative z-10 overflow-hidden">
             {children}
           </main>
@@ -36,7 +30,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Sidebar Overlay */}
       {mobileOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" 
+          className="fixed inset-0 bg-black/35 backdrop-blur-sm z-40 md:hidden" 
           onClick={() => setMobileOpen(false)} 
         />
       )}

@@ -33,7 +33,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, aspectRatio =
   }, [imageSrc, croppedAreaPixels, onCropComplete]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden w-full max-w-md shadow-2xl">
         <div className="p-4 border-b border-white/5 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">{title}</h3>

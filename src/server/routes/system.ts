@@ -67,8 +67,25 @@ router.get("/activity", async (req, res) => {
 
 router.get("/versions", async (req, res) => {
   const type = (req.query.type as string) || "PAPER";
-  const versions = await getVersions(type);
+  const game = (req.query.game as string) || "minecraft";
+  const versions = await getVersions(type, game);
   res.json(versions);
+});
+
+router.get("/games", async (req, res) => {
+  const { listGameDefinitions } = await import("../gameDefinitions.js");
+  const games = listGameDefinitions().map(g => ({
+    id: g.id,
+    name: g.name,
+    category: g.category,
+    description: g.description,
+    subtypes: g.subtypes,
+    defaultRam: g.defaultRam,
+    defaultCpu: g.defaultCpu,
+    defaultDisk: g.defaultDisk,
+    supportsRcon: g.supportsRcon,
+  }));
+  res.json(games);
 });
 
 // Deprecated endpoint for backward compatibility
@@ -167,14 +184,12 @@ router.put("/users/:id/password", async (req, res) => {
 router.put("/settings", async (req, res) => {
   const user = (req as any).user;
   if(user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden"});
-  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enablePlayit, enableTutorial, enableLoginAnimation, allowRegistration } = req.body;
+  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enableLoginAnimation, allowRegistration } = req.body;
   const settings = await readJSON("settings.json") || {};
   if (panelName !== undefined) settings.panelName = panelName || "FrostByte Panel";
   if (panelLogo !== undefined) settings.panelLogo = panelLogo;
   if (panelBackgroundImage !== undefined) settings.panelBackgroundImage = panelBackgroundImage;
   if (panelBackgroundBlur !== undefined) settings.panelBackgroundBlur = panelBackgroundBlur;
-  if (enablePlayit !== undefined) settings.enablePlayit = enablePlayit;
-  if (enableTutorial !== undefined) settings.enableTutorial = enableTutorial;
   if (enableLoginAnimation !== undefined) settings.enableLoginAnimation = enableLoginAnimation;
   if (allowRegistration !== undefined) settings.allowRegistration = allowRegistration;
   await writeJSON("settings.json", settings);

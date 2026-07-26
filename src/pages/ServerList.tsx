@@ -59,7 +59,7 @@ export default function ServerList() {
 
       <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 gap-4 md:gap-6">
         {servers.map(server => (
-          <motion.div variants={itemAnim} key={server.id} className="bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 p-5 md:p-6 flex flex-col group hover:bg-black/60 transition-all shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
+          <motion.div variants={itemAnim} key={server.id} className="bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 p-5 md:p-6 flex flex-col group hover:bg-black/35 transition-all shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
             {/* Subtle top glow based on status */}
             <div className={`absolute top-0 left-0 right-0 h-[2px] opacity-70 ${server.status === 'online' ? 'bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-gradient-to-r from-transparent via-zinc-500 to-transparent'}`} />
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/0 to-transparent opacity-0 group-hover:opacity-10 transition-opacity" />
@@ -67,7 +67,7 @@ export default function ServerList() {
             <Link to={`/servers/${server.id}`} className="block flex-1 z-10 relative">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center group-hover:border-cyan-400/40 group-hover:bg-cyan-400/20 transition-all shadow-inner relative overflow-hidden">
+                  <div className="w-14 h-14 rounded-2xl bg-black/35 border border-white/10 flex items-center justify-center group-hover:border-cyan-400/40 group-hover:bg-cyan-400/20 transition-all shadow-inner relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <Server className="w-7 h-7 text-zinc-400 group-hover:text-cyan-300 transition-colors relative z-10" />
                   </div>

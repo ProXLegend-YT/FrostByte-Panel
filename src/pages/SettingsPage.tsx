@@ -9,14 +9,12 @@ import { LoadingOverlay } from "../components/LoadingOverlay";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin } = useAuth();
-  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enablePlayit, enableTutorial, enableLoginAnimation, allowRegistration, fetchSettings } = useSettings();
+  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enableLoginAnimation, allowRegistration, fetchSettings } = useSettings();
   const [users, setUsers] = useState<any[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [newPanelName, setNewPanelName] = useState(panelName);
-  const [newEnablePlayit, setNewEnablePlayit] = useState(enablePlayit);
-  const [newEnableTutorial, setNewEnableTutorial] = useState(enableTutorial);
   const [newEnableLoginAnimation, setNewEnableLoginAnimation] = useState(enableLoginAnimation);
   const [newAllowRegistration, setNewAllowRegistration] = useState(allowRegistration);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -50,11 +48,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setNewPanelName(panelName);
-    setNewEnablePlayit(enablePlayit);
-    setNewEnableTutorial(enableTutorial);
     setNewEnableLoginAnimation(enableLoginAnimation);
     setNewAllowRegistration(allowRegistration);
-  }, [panelName, enablePlayit, enableTutorial, enableLoginAnimation, allowRegistration]);
+  }, [panelName, enableLoginAnimation, allowRegistration]);
 
   const fetchUsers = async () => {
     if (!isAdmin) return;
@@ -179,7 +175,7 @@ export default function SettingsPage() {
         <p className="text-cyan-300/80 font-bold uppercase tracking-widest text-sm mt-2">Configure your account and platform preferences.</p>
       </div>
 
-      <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-10 mb-8 shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
+      <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-10 mb-8 shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
         {/* Subtle decorative glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-400/5 blur-[80px] rounded-full pointer-events-none" />
         
@@ -187,11 +183,11 @@ export default function SettingsPage() {
           <User className="mr-3 text-cyan-300 w-5 h-5" /> Account Details
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 mb-8">
-          <div className="bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+          <div className="bg-black/40 backdrop-blur-sm border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
             <p className="text-sm font-medium text-zinc-500 mb-1">Username</p>
             <p className="text-lg font-semibold text-zinc-200">{user.username}</p>
           </div>
-          <div className="bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+          <div className="bg-black/40 backdrop-blur-sm border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
             <p className="text-sm font-medium text-zinc-500 mb-1">Access Role</p>
             <p className="text-lg font-semibold text-zinc-200 capitalize flex items-center gap-2">
               {user.role}
@@ -257,7 +253,7 @@ export default function SettingsPage() {
       </div>
 
       {isAdmin && (
-        <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-10 mb-8 shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
+        <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-10 mb-8 shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
           <h2 className="text-xl font-bold mb-6 flex items-center text-white relative z-10">
             <Layout className="mr-3 text-emerald-400 w-5 h-5" /> Platform Preferences
           </h2>
@@ -267,7 +263,7 @@ export default function SettingsPage() {
                 e.preventDefault();
                 setIsSavingSettings(true);
                 try {
-                  await axios.put("/api/system/settings", { panelName: newPanelName, enablePlayit: newEnablePlayit });
+                  await axios.put("/api/system/settings", { panelName: newPanelName });
                   fetchSettings();
                   alert("Settings updated successfully");
                 } catch (err: any) {
@@ -298,50 +294,6 @@ export default function SettingsPage() {
                 Features
               </label>
               <div className="flex flex-col gap-4 mt-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div className="relative flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={newEnablePlayit} 
-                      onChange={async (e) => {
-                        const val = e.target.checked;
-                        setNewEnablePlayit(val);
-                        try {
-                          await axios.put("/api/system/settings", { enablePlayit: val });
-                          fetchSettings();
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
-                  </div>
-                  <span className="text-sm font-medium text-zinc-300">Enable Playit Tunnel</span>
-                </label>
-
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div className="relative flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={newEnableTutorial} 
-                      onChange={async (e) => {
-                        const val = e.target.checked;
-                        setNewEnableTutorial(val);
-                        try {
-                          await axios.put("/api/system/settings", { enableTutorial: val });
-                          fetchSettings();
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
-                  </div>
-                  <span className="text-sm font-medium text-zinc-300">Enable Onboarding Tutorial for New Users</span>
-                </label>
-
                 <label className="flex items-center gap-3 cursor-pointer">
                   <div className="relative flex items-center">
                     <input 
@@ -443,7 +395,7 @@ export default function SettingsPage() {
       )}
 
       {isAdmin && (
-        <div className="bg-black/20 backdrop-blur-xl border border-white/5 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden mt-8">
+        <div className="bg-black/20 backdrop-blur-sm border border-white/5 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden mt-8">
           <h2 className="text-xl font-bold mb-8 flex items-center text-white relative z-10">
             <Layout className="mr-3 text-cyan-300 w-5 h-5" /> Background Configuration
           </h2>

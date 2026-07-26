@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { requireAuth, requireServerAccess } from "../middleware/auth.js";
-import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod } from "../controllers/servers.js";
+import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod } from "../controllers/servers.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -19,6 +19,7 @@ router.put("/:id/ipalias", requireServerAccess("settings"), updateIpAlias);
 
 router.put("/:id/version", requireServerAccess("settings"), changeServerVersion);
 router.put("/:id/resources", requireServerAccess(), updateServerResources);
+router.put("/:id/bot-config", requireServerAccess(), updateBotConfig);
 
 router.post("/:id/start", requireServerAccess("power"), startServer);
 router.post("/:id/stop", requireServerAccess("power"), stopServer);
@@ -40,137 +41,6 @@ router.post("/:id/backups", requireServerAccess("backups"), createBackup);
 router.get("/:id/backups/:filename", requireServerAccess("backups"), downloadBackup);
 router.delete("/:id/backups/:filename", requireServerAccess("backups"), deleteBackup);
 
-
-router.get("/:id/playit", requireServerAccess("settings"), async (req, res) => {
-  const server = (req as any).server;
-  const serverName = server.name.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const pm2Name = `playit_${serverName}`;
-
-  const { execFile } = await import("child_process");
-
-  execFile("npx", ["pm2", "jlist"], (err, stdout) => {
-    let status = "stopped";
-    try {
-      const jsonStart = stdout.indexOf('[');
-      const jsonEnd = stdout.lastIndexOf(']');
-      const jsonStr = jsonStart !== -1 && jsonEnd !== -1 ? stdout.substring(jsonStart, jsonEnd + 1) : stdout;
-      const pm2List = JSON.parse(jsonStr);
-      const playitProcess = pm2List.find((p: any) => p.name === pm2Name);
-      if (playitProcess && playitProcess.pm2_env && playitProcess.pm2_env.status === "online") {
-        status = "running";
-      }
-    } catch (e) {}
-
-    if (status === "running") {
-      execFile("npx", ["pm2", "logs", pm2Name, "--nostream", "--lines", "100"], (err, logStdout) => {
-        const logs = (logStdout || "").replace(/\x1b\[[0-9;]*[a-zA-Z]|\x1b./g, "");
-        const claimLinkMatches = logs.match(/https:\/\/playit\.gg\/claim\/[a-zA-Z0-9]+/g);
-        res.json({
-          status,
-          claimLink: claimLinkMatches ? claimLinkMatches[claimLinkMatches.length - 1] : null,
-          logs: logs.split('\n').slice(-50).join('\n')
-        });
-      });
-    } else {
-      res.json({ status: "stopped", claimLink: null, logs: "" });
-    }
-  });
-});
-
-router.post("/:id/playit/start", requireServerAccess("settings"), async (req, res) => {
-  const { id } = req.params;
-  const server = (req as any).server;
-  const serverName = server.name.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const pm2Name = `playit_${serverName}`;
-
-  const serverDir = path.join(process.cwd(), ".data", "servers", id);
-  const playitBin = path.join(serverDir, `playit_${serverName}`);
-  const secretPath = path.join(serverDir, "playit.toml");
-
-  const { execFile } = await import("child_process");
-  const fsp = await import("fs/promises");
-  const fssync = await import("fs");
-
-  const run = (cmd: string, args: string[]) =>
-    new Promise<{ err: any; stdout: string; stderr: string }>((resolve) => {
-      execFile(cmd, args, (err, stdout, stderr) => resolve({ err, stdout: stdout || "", stderr: stderr || "" }));
-    });
-
-  try {
-    await fsp.mkdir(serverDir, { recursive: true });
-
-    if (!fssync.existsSync(playitBin)) {
-      const https = await import("https");
-      await new Promise<void>((resolve, reject) => {
-        const file = fssync.createWriteStream(playitBin);
-        const download = (url: string) => {
-          https.get(url, (response) => {
-            if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-              return download(response.headers.location);
-            }
-            if (response.statusCode !== 200) {
-              return reject(new Error(`Failed to download playit agent: HTTP ${response.statusCode}`));
-            }
-            response.pipe(file);
-            file.on("finish", () => file.close(() => resolve()));
-          }).on("error", reject);
-        };
-        download("https://github.com/playit-cloud/playit-agent/releases/download/v0.15.26/playit-linux-amd64");
-      });
-      await fsp.chmod(playitBin, 0o755);
-    }
-
-    await run("npx", ["pm2", "delete", pm2Name]).catch(() => {});
-    await run("npx", ["pm2", "flush", pm2Name]).catch(() => {});
-
-    const { err, stderr } = await run("npx", [
-      "pm2", "start", playitBin,
-      "--name", pm2Name,
-      "--", "-s", "--secret_path", secretPath,
-    ]);
-    if (err) {
-      return res.status(500).json({ error: "Failed to start Playit Tunnel", details: stderr });
-    }
-    await run("npx", ["pm2", "save"]).catch(() => {});
-    res.json({ success: true });
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to start Playit Tunnel", details: e.message });
-  }
-});
-
-router.post("/:id/playit/stop", requireServerAccess("settings"), async (req, res) => {
-  const server = (req as any).server;
-  const serverName = server.name.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const pm2Name = `playit_${serverName}`;
-
-  const { execFile } = await import("child_process");
-  execFile("npx", ["pm2", "delete", pm2Name], async () => {
-    execFile("npx", ["pm2", "save"], () => {
-      res.json({ success: true });
-    });
-  });
-});
-
-router.post("/:id/playit/reset", requireServerAccess("settings"), async (req, res) => {
-  const { id } = req.params;
-  const server = (req as any).server;
-  const serverName = server.name.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const pm2Name = `playit_${serverName}`;
-  const serverDir = path.join(process.cwd(), ".data", "servers", id);
-  const secretPath = path.join(serverDir, "playit.toml");
-
-  const { execFile } = await import("child_process");
-  const fsp = await import("fs/promises");
-
-  execFile("npx", ["pm2", "delete", pm2Name], async () => {
-    execFile("npx", ["pm2", "flush", pm2Name], async () => {
-      await fsp.unlink(secretPath).catch(() => {});
-      execFile("npx", ["pm2", "save"], () => {
-        res.json({ success: true });
-      });
-    });
-  });
-});
 
 // Sub-users endpoints (owner/admin only — a sub-user must never be able to
 // grant themselves or others additional access to the server)

@@ -4,6 +4,7 @@ import path from "path";
 import crypto from "crypto";
 import { io } from "../../../server.js"; // Import socket for logs
 import { readJSON } from "./db.js";
+import { getGameDefinition, getDockerImageFor } from "../gameDefinitions.js";
 
 export const isSandbox = !fs.existsSync("/var/run/docker.sock") && process.platform !== "win32";
 
@@ -19,23 +20,9 @@ const mockState: Record<string, boolean> = {};
 const expectedStops = new Set<string>();
 export const markExpectedStop = (containerId: string) => expectedStops.add(containerId);
 
-export const getVersions = async (type: string = "PAPER") => {
-  const normalizedType = type.toUpperCase();
-  if (normalizedType === "VELOCITY") {
-    return ["latest", "3.3.0-SNAPSHOT"];
-  }
-  if (normalizedType === "BUNGEECORD" || normalizedType === "WATERFALL") {
-    return ["latest"];
-  }
-  
-  return [
-    "latest", "1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6", "1.21.5", "1.21.4", "1.21.3", "1.21.1", "1.21", 
-    "1.20.6", "1.20.5", "1.20.4", "1.20.2", "1.20.1", "1.20", 
-    "1.19.4", "1.19.3", "1.19.2", "1.19.1", "1.19", 
-    "1.18.2", "1.18.1", "1.18", "1.17.1", "1.17", "1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.15.2", "1.15.1", "1.15", 
-    "1.14.4", "1.14.3", "1.14.2", "1.14.1", "1.14", "1.13.2", "1.13.1", "1.13", "1.12.2", "1.12.1", "1.12", "1.11.2", "1.10.2", 
-    "1.9.4", "1.8.8", "1.7.10"
-  ];
+export const getVersions = async (type: string = "PAPER", gameId: string = "minecraft") => {
+  const gameDef = getGameDefinition(gameId);
+  return gameDef.getVersions(type);
 };
 
 const DOCKER_IMAGE = "itzg/minecraft-server";
@@ -46,11 +33,13 @@ export const createServerContainer = async (serverData: any) => {
     return "mock-container-id-" + serverData.id;
   }
 
-  const serverType = serverData.type || "PAPER";
-  const isProxy = ["VELOCITY", "BUNGEECORD", "WATERFALL"].includes(serverType.toUpperCase());
-  const dockerImage = isProxy
-    ? "itzg/bungeecord" 
-    : "itzg/minecraft-server";
+  // Existing server records predate multi-game support and have no `game`
+  // field — treat those as Minecraft so nothing already deployed breaks.
+  const gameId = serverData.game || "minecraft";
+  const gameDef = getGameDefinition(gameId);
+  const subtype = serverData.type || (gameDef.subtypes ? gameDef.subtypes[0].id : undefined);
+  const dockerImage = getDockerImageFor(gameId, subtype);
+  const isProxy = gameId === "minecraft" && ["VELOCITY", "BUNGEECORD", "WATERFALL"].includes((subtype || "").toUpperCase());
 
   // Pull image if not exists
   console.log(`Ensuring ${dockerImage} is pulled...`);
@@ -69,23 +58,21 @@ export const createServerContainer = async (serverData: any) => {
   const serverDir = path.join(process.cwd(), ".data", "servers", serverData.id);
   await fs.ensureDir(serverDir);
 
-  const envVars = [
-    `TYPE=${serverType}`,
-    `VERSION=${serverData.version}`,
-    `MEMORY=${serverData.ram}G`,
-    `INIT_MEMORY=128M`,
-    `SERVER_PORT=${serverData.port}`,
-  ];
+  const rconPassword = gameDef.supportsRcon && !isProxy ? crypto.randomBytes(16).toString("hex") : undefined;
+  const envVars = gameDef.buildEnv({ serverData, rconPassword });
+  const startupCommand = gameDef.getStartupCommand?.({ serverData, rconPassword });
 
-  if (!isProxy) {
-    const rconPassword = crypto.randomBytes(16).toString("hex");
-    envVars.push(
-      `EULA=TRUE`,
-      `ENABLE_RCON=true`,
-      `RCON_PASSWORD=${rconPassword}`,
-      `JVM_OPTS=-DPaper.IgnoreWorldDataVersion=true`,
-      `JVM_DD_OPTS=Paper.IgnoreWorldDataVersion=true,paper.ignoreWorldDataVersion=true`
-    );
+  const containerDataPath = isProxy ? "/server" : gameDef.containerDataPath;
+
+  const protocols: ("tcp" | "udp")[] =
+    gameDef.portProtocol === "both" ? ["tcp", "udp"] : [gameDef.portProtocol];
+
+  const exposedPorts: Record<string, {}> = {};
+  const portBindings: Record<string, { HostPort: string }[]> = {};
+  for (const proto of protocols) {
+    const key = `${serverData.port}/${proto}`;
+    exposedPorts[key] = {};
+    portBindings[key] = [{ HostPort: `${serverData.port}` }];
   }
 
   const container = await docker.createContainer({
@@ -95,18 +82,11 @@ export const createServerContainer = async (serverData: any) => {
     OpenStdin: true,
     StdinOnce: false,
     Env: envVars,
-    ExposedPorts: {
-      [`${serverData.port}/tcp`]: {}
-    },
+    ...(startupCommand ? { Cmd: startupCommand, WorkingDir: containerDataPath } : {}),
+    ExposedPorts: exposedPorts,
     HostConfig: {
-      PortBindings: {
-        [`${serverData.port}/tcp`]: [
-          {
-            HostPort: `${serverData.port}`
-          }
-        ]
-      },
-      Binds: [`${serverDir}:${isProxy ? '/server' : '/data'}`],
+      PortBindings: portBindings,
+      Binds: [`${serverDir}:${containerDataPath}`],
       ...buildResourceLimits(serverData),
     }
   });

@@ -92,7 +92,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }} className="bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }} className="bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 overflow-hidden shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative">
         {/* Subtle top glow */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent opacity-50" />
         
@@ -117,7 +117,7 @@ export default function Dashboard() {
                 <Link to={`/servers/${server.id}`} className="flex items-center justify-between p-5 md:p-6 hover:bg-white/5 transition-all group relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/0 to-cyan-400/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="flex items-center gap-5 relative z-10">
-                    <div className="w-12 h-12 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center group-hover:border-cyan-400/40 group-hover:bg-cyan-400/20 transition-all shadow-inner relative overflow-hidden">
+                    <div className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 flex items-center justify-center group-hover:border-cyan-400/40 group-hover:bg-cyan-400/20 transition-all shadow-inner relative overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <Server className="w-6 h-6 text-zinc-400 group-hover:text-cyan-300 transition-colors relative z-10" />
                     </div>
@@ -160,7 +160,7 @@ function StatCard({ title, value, icon, trend, chartColor }: { title: string, va
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
   };
   return (
-    <motion.div variants={itemAnim} className="bg-black/40 backdrop-blur-xl p-6 rounded-2xl border border-white/10 relative overflow-hidden group hover:bg-black/60 transition-all shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+    <motion.div variants={itemAnim} className="bg-black/40 backdrop-blur-sm p-6 rounded-2xl border border-white/10 relative overflow-hidden group hover:bg-black/35 transition-all shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
       {/* Decorative gradient blur in background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${chartColor} opacity-5 group-hover:opacity-10 transition-opacity`} />
       <div className={`absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br ${chartColor} opacity-20 blur-[50px] group-hover:opacity-40 transition-opacity`} />

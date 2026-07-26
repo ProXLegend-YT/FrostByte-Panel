@@ -121,9 +121,9 @@ export function NotificationBell() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto custom-scrollbar bg-[#0a0c14]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] z-50"
+              className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto custom-scrollbar bg-[#0a0c14]/95 backdrop-blur-sm border border-white/10 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] z-50"
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 sticky top-0 bg-[#0a0c14]/95 backdrop-blur-xl">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 sticky top-0 bg-[#0a0c14]/95 backdrop-blur-sm">
                 <h3 className="font-bold text-sm text-white">Notifications</h3>
                 {unreadCount > 0 && (
                   <button onClick={markAllRead} className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1 font-medium">
@@ -167,7 +167,7 @@ export function NotificationBell() {
             initial={{ opacity: 0, y: -16, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: -16, x: "-50%" }}
-            className="fixed top-4 left-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm bg-[#0a0c14]/95 backdrop-blur-xl border border-cyan-400/20 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] p-4 flex gap-3"
+            className="fixed top-4 left-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm bg-[#0a0c14]/95 backdrop-blur-sm border border-cyan-400/20 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] p-4 flex gap-3"
           >
             <div className="mt-0.5 shrink-0">{TYPE_ICON[toast.type]}</div>
             <div className="min-w-0 flex-1">

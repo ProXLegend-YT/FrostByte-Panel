@@ -21,6 +21,46 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #4b5563;
   }
+
+  /*
+   * Centralized "glass" panel styles. backdrop-filter: blur() is one of the
+   * most GPU-expensive CSS effects, especially when many instances are
+   * stacked/nested on one screen (cards inside panels inside a blurred
+   * layout). Rather than every component picking its own blur radius,
+   * these three tiers give a consistent look with values low enough to
+   * stay smooth on mobile GPUs, and fall back to a plain translucent
+   * background with no blur at all on devices that report reduced
+   * transparency preference or lack backdrop-filter support.
+   */
+  .glass-panel {
+    background: rgba(10, 12, 20, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .glass-panel-strong {
+    background: rgba(8, 10, 16, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-panel-subtle {
+    background: rgba(10, 12, 20, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass-panel, .glass-panel-strong, .glass-panel-subtle {
+      background: rgba(8, 10, 16, 0.88);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-panel, .glass-panel-strong, .glass-panel-subtle {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: rgba(8, 10, 16, 0.9);
+    }
+  }
 }
 
 input[type=number]::-webkit-inner-spin-button, 

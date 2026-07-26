@@ -14,15 +14,13 @@ import PluginManager from "../components/PluginManager";
 import ModManager from "../components/ModManager";
 import SubUsersManager from "../components/SubUsersManager";
 import ServerSFTP from "../components/ServerSFTP";
-import PlayitTunnel from "./PlayitTunnel";
+import { NotificationBell } from "../components/NotificationBell";
 import { Puzzle, Box, Network } from "lucide-react";
-import { Settings, Globe } from "lucide-react";
-import { useSettings } from "../context/SettingsContext";
+import { Settings } from "lucide-react";
 
 
 export default function ServerView() {
   const { id } = useParams();
-  const { enablePlayit } = useSettings();
   const [server, setServer] = useState<any>(null);
   const [totalSystemRam, setTotalSystemRam] = useState<number>(0);
   const [showRamWarning, setShowRamWarning] = useState(false);
@@ -110,12 +108,6 @@ export default function ServerView() {
     { name: "Backup", path: `/servers/${id}/backup`, exactPath: "backup", icon: <Archive size={18} /> }
   );
 
-  if (enablePlayit) {
-    tabs.push(
-      { name: "Playit Tunnel", path: `/servers/${id}/playit`, exactPath: "playit", icon: <Globe size={18} /> }
-    );
-  }
-
   const navTabs: any[] = [
     { name: "Back to Dashboard", path: `/servers`, exactPath: "back", icon: <LogOut size={18} /> }
   ];
@@ -133,13 +125,13 @@ export default function ServerView() {
       {/* Drawer Overlay */}
       {sidebarOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" 
+          className="md:hidden fixed inset-0 bg-black/35 backdrop-blur-sm z-40 transition-opacity" 
           onClick={() => setSidebarOpen(false)} 
         />
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-black/80 md:bg-black/40 backdrop-blur-3xl border-r border-white/10 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shrink-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-black/50 md:bg-black/40 backdrop-blur-md border-r border-white/10 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shrink-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
              <Link to="/servers" className="p-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 shadow-sm rounded-lg text-zinc-400 hover:text-white transition-all shrink-0">
@@ -233,7 +225,7 @@ export default function ServerView() {
 
       <div className="flex-1 flex flex-col h-full bg-transparent overflow-hidden relative isolate">
         {/* Top Header with Hamburger */}
-        <div className="bg-black/40 backdrop-blur-2xl border-b border-white/10 p-3 md:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.5)] relative z-20">
+        <div className="bg-black/40 backdrop-blur-md border-b border-white/10 p-3 md:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.5)] relative z-20">
           <div className="flex items-center justify-between w-full md:w-auto">
             <div className="flex items-center gap-3">
               <button 
@@ -246,12 +238,15 @@ export default function ServerView() {
               <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
               <h1 className="text-base md:text-lg font-bold tracking-tight text-white mb-0.5 leading-none">{server.name}</h1>
             </div>
-            <div className="flex md:hidden items-center space-x-2 shrink-0">
-               <span className="flex h-2 w-2 relative shrink-0">
-                  {server.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-600'}`}></span>
-               </span>
-               <span className="text-xs font-medium text-zinc-400 capitalize flex">{server.status}</span>
+            <div className="flex md:hidden items-center space-x-3 shrink-0">
+               <div className="flex items-center space-x-2">
+                 <span className="flex h-2 w-2 relative shrink-0">
+                    {server.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-600'}`}></span>
+                 </span>
+                 <span className="text-xs font-medium text-zinc-400 capitalize flex">{server.status}</span>
+               </div>
+               <NotificationBell />
             </div>
           </div>
           
@@ -269,6 +264,10 @@ export default function ServerView() {
                    <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-600'}`}></span>
                 </span>
                 <span className="text-xs font-medium text-zinc-400 capitalize flex">{server.status}</span>
+             </div>
+             <div className="hidden md:block w-px h-5 bg-white/10" />
+             <div className="hidden md:block shrink-0">
+                <NotificationBell />
              </div>
                 
              <div className="flex items-center space-x-1 sm:space-x-2 shrink-0 ml-auto md:ml-1">
@@ -300,7 +299,7 @@ export default function ServerView() {
              <Route path="/backup" element={<ServerBackups serverId={id!} />} />
              <Route path="/plugins" element={<PluginManager serverId={id!} />} />
              <Route path="/mods" element={<ModManager serverId={id!} />} />
-             {enablePlayit && <Route path="/playit" element={<PlayitTunnel serverId={id!} />} />}
+             
            </Routes>
         </div>
       </div>
@@ -309,7 +308,7 @@ export default function ServerView() {
 
       <AnimatePresence>
         {showRamWarning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

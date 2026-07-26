@@ -72,7 +72,7 @@ export default function ActivityFeed({ limit = 10, serverId }: { limit?: number;
 
   if (entries === null) {
     return (
-      <div className="bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 p-8 flex items-center justify-center">
+      <div className="bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 p-8 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -80,7 +80,7 @@ export default function ActivityFeed({ limit = 10, serverId }: { limit?: number;
 
   if (entries.length === 0) {
     return (
-      <div className="bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+      <div className="bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 p-10 text-center">
         <Clock className="mx-auto mb-3 text-zinc-600" size={28} />
         <p className="text-zinc-400 text-sm font-medium">No activity recorded yet.</p>
       </div>
@@ -88,7 +88,7 @@ export default function ActivityFeed({ limit = 10, serverId }: { limit?: number;
   }
 
   return (
-    <div className="bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative">
+    <div className="bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 overflow-hidden shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative">
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent opacity-50" />
       <div className="divide-y divide-white/5">
         {entries.map((entry, index) => {

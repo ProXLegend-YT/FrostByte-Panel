@@ -22,7 +22,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   links.push({ name: "Settings", path: "/settings", icon: <Settings size={18} /> });
 
   return (
-    <div className="w-64 h-full bg-black/40 backdrop-blur-2xl flex flex-col py-6 border-r border-white/10 relative shadow-[20px_0_40px_-20px_rgba(0,0,0,0.5)] z-20">
+    <div className="w-64 h-full bg-black/40 backdrop-blur-md flex flex-col py-6 border-r border-white/10 relative shadow-[20px_0_40px_-20px_rgba(0,0,0,0.5)] z-20">
       {onClose && (
         <button onClick={onClose} className="md:hidden flex items-center justify-center absolute top-5 right-4 p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
           <X size={20} />
@@ -72,7 +72,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       </nav>
 
       <div className="w-full px-4 mt-auto space-y-3">
-        <div className="bg-black/60 rounded-xl p-3 flex items-center gap-3 border border-white/10 hover:border-cyan-400/30 transition-all cursor-default shadow-inner relative overflow-hidden group">
+        <div className="bg-black/35 rounded-xl p-3 flex items-center gap-3 border border-white/10 hover:border-cyan-400/30 transition-all cursor-default shadow-inner relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-sky-500 border border-white/20 flex items-center justify-center font-black text-sm text-[#030308] shadow-[0_0_10px_rgba(56,189,248,0.5)] relative z-10">
             {user?.username?.[0]?.toUpperCase()}

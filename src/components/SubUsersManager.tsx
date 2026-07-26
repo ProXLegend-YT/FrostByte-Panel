@@ -121,7 +121,7 @@ export default function SubUsersManager({ serverId }: SubUsersManagerProps) {
         </div>
 
         {subUsers.length === 0 ? (
-          <div className="bg-black/20 border border-white/5 rounded-2xl p-8 flex flex-col items-center justify-center text-center backdrop-blur-xl">
+          <div className="bg-black/20 border border-white/5 rounded-2xl p-8 flex flex-col items-center justify-center text-center backdrop-blur-sm">
             <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4">
               <Users size={32} className="text-zinc-500" />
             </div>
@@ -131,7 +131,7 @@ export default function SubUsersManager({ serverId }: SubUsersManagerProps) {
         ) : (
           <div className="grid gap-4">
             {subUsers.map((su) => (
-              <div key={su.userId} className="bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+              <div key={su.userId} className="bg-black/40 backdrop-blur-sm border border-white/10 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-cyan-400/10 rounded-xl flex items-center justify-center border border-cyan-400/20">
                     <Shield className="text-cyan-300" size={24} />
@@ -170,7 +170,7 @@ export default function SubUsersManager({ serverId }: SubUsersManagerProps) {
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

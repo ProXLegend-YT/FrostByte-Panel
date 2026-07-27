@@ -1,6 +1,0 @@
-{
-  "name": "FrostByte Panel",
-  "description": "A futuristic, self-hostable game server management panel with file manager, terminal access, container orchestration, and playit.gg integration.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

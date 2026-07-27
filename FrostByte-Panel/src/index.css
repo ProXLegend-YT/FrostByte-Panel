@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+  }
+
+  /*
+   * Centralized "glass" panel styles. backdrop-filter: blur() is one of the
+   * most GPU-expensive CSS effects, especially when many instances are
+   * stacked/nested on one screen (cards inside panels inside a blurred
+   * layout). Rather than every component picking its own blur radius,
+   * these three tiers give a consistent look with values low enough to
+   * stay smooth on mobile GPUs, and fall back to a plain translucent
+   * background with no blur at all on devices that report reduced
+   * transparency preference or lack backdrop-filter support.
+   */
+  .glass-panel {
+    background: rgba(10, 12, 20, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .glass-panel-strong {
+    background: rgba(8, 10, 16, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-panel-subtle {
+    background: rgba(10, 12, 20, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass-panel, .glass-panel-strong, .glass-panel-subtle {
+      background: rgba(8, 10, 16, 0.88);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-panel, .glass-panel-strong, .glass-panel-subtle {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: rgba(8, 10, 16, 0.9);
+    }
+  }
+}
+
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+
+body {
+  background-color: #030305;
+}
+@keyframes qx-fade-up {
+  from { opacity:0; transform:translateY(14px) scale(0.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes qx-fade-in {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+@keyframes qx-slide-left {
+  from { opacity:0; transform:translateX(-24px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes qx-slide-right {
+  from { opacity:0; transform:translateX(24px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes qx-breathe {
+  0%,100% { opacity:0.5; }
+  50%     { opacity:1; }
+}
+@keyframes qx-ping {
+  0%   { transform:scale(1); opacity:0.7; }
+  75%,100% { transform:scale(2.4); opacity:0; }
+}
+@keyframes qx-blink {
+  0%,49% { opacity:1; }
+  50%,100% { opacity:0; }
+}
+@keyframes qx-scan {
+  0%   { top:-2px; }
+  100% { top:100%; }
+}
+@keyframes qx-log-in {
+  from { opacity:0; transform:translateX(-8px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes qx-gauge-dash {
+  from { stroke-dashoffset: var(--gauge-circumference); }
+}
+@keyframes qx-shimmer {
+  0%   { background-position:-200% 0; }
+  100% { background-position:200% 0; }
+}
+@keyframes qx-float {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-4px); }
+}
+@keyframes qx-grid-scroll {
+  0%   { transform:translateY(0); }
+  100% { transform:translateY(40px); }
+}
+@keyframes qx-dot-bounce {
+  0%,80%,100% { transform:scale(0.5); opacity:0.3; }
+  40%         { transform:scale(1); opacity:1; }
+}
+@keyframes qx-border-run {
+  0%   { background-position:0% 50%; }
+  100% { background-position:200% 50%; }
+}
+
+.qx-enter       { animation: qx-fade-up 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+.qx-enter-left  { animation: qx-slide-left 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.qx-enter-right { animation: qx-slide-right 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.qx-log-line    { animation: qx-log-in 0.2s cubic-bezier(0.22,1,0.36,1) both; }
+
+.qx-glass {
+  background: linear-gradient(135deg, rgba(10,12,20,0.85) 0%, rgba(15,18,30,0.75) 100%);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+.qx-gauge-track { transition: stroke-dashoffset 0.9s cubic-bezier(0.22,1,0.36,1); }
+
+.qx-input-glow:focus-within {
+  border-color: rgba(56,189,248,0.5);
+  box-shadow: 0 0 0 1px rgba(56,189,248,0.15), 0 0 24px -4px rgba(56,189,248,0.2), inset 0 0 12px -6px rgba(56,189,248,0.1);
+}
+
+.qx-btn-execute {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
+}
+.qx-btn-execute::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.12), transparent);
+  background-size: 200% 100%;
+  animation: qx-shimmer 3s linear infinite;
+  opacity:0;
+  transition: opacity 0.3s;
+}
+.qx-btn-execute:hover::before { opacity:1; }
+.qx-btn-execute:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px -4px rgba(56,189,248,0.35);
+}
+.qx-btn-execute:active { transform: translateY(0) scale(0.97); }
+
+.qx-stat-card {
+  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.qx-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -8px rgba(0,0,0,0.5);
+}
+
+.qx-console-body::-webkit-scrollbar { width:5px; }
+.qx-console-body::-webkit-scrollbar-track { background:transparent; }
+.qx-console-body::-webkit-scrollbar-thumb {
+  background: rgba(56,189,248,0.2);
+  border-radius:99px;
+}
+.qx-console-body::-webkit-scrollbar-thumb:hover { background: rgba(56,189,248,0.4); }
+
+.qx-grid-bg {
+  background-image:
+    linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: qx-grid-scroll 12s linear infinite;
+}

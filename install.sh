@@ -184,6 +184,84 @@ EOF
   fi
 }
 
+# --- Step: set up a Cloudflare Tunnel ---------------------------------------
+# Cloudflare Tunnel runs a small daemon (cloudflared) that opens an outbound
+# connection to Cloudflare's network — no public IP, no port forwarding, no
+# inbound firewall rules needed at all. This is the right fit for a server
+# behind CGNAT, a home router, or (as far as it can go) Termux on a phone.
+install_cloudflared() {
+  if command_exists cloudflared; then return 0; fi
+
+  log "Installing cloudflared..."
+  if $IS_TERMUX; then
+    pkg install -y cloudflared 2>/dev/null && return 0
+    fail "cloudflared isn't available via pkg on this Termux setup. Install it manually: https://github.com/cloudflare/cloudflared"
+    return 1
+  fi
+
+  local arch
+  arch=$(uname -m)
+  local cf_arch="amd64"
+  [[ "$arch" == "aarch64" || "$arch" == "arm64" ]] && cf_arch="arm64"
+
+  curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf_arch}" -o /tmp/cloudflared \
+    && chmod +x /tmp/cloudflared \
+    && $SUDO mv /tmp/cloudflared /usr/local/bin/cloudflared
+  command_exists cloudflared
+}
+
+setup_cloudflare_tunnel() {
+  local domain="$1"
+  local backend_port="$2"
+
+  install_cloudflared || { warn "Skipping tunnel setup — cloudflared installation failed."; return; }
+
+  echo
+  echo -e "${G}Cloudflare Tunnel needs a one-time login to your Cloudflare account to create a named, persistent tunnel for ${domain}.${NC}"
+  read -r -p "$(echo -e "${G}Set up a persistent named tunnel now? [y/N] (choosing No starts a temporary quick tunnel instead, no login needed): ${NC}")" do_named
+
+  if [[ "$do_named" =~ ^[Yy]$ ]]; then
+    log "Opening Cloudflare login (a browser link will be printed — open it and authorize)..."
+    cloudflared tunnel login
+    local tunnel_name="frostbyte-panel"
+    cloudflared tunnel create "$tunnel_name" 2>/dev/null
+    cloudflared tunnel route dns "$tunnel_name" "$domain" 2>/dev/null
+
+    mkdir -p "$HOME/.cloudflared"
+    local tunnel_id
+    tunnel_id=$(cloudflared tunnel list 2>/dev/null | awk -v n="$tunnel_name" '$2==n {print $1}')
+    cat > "$HOME/.cloudflared/config.yml" << EOF
+tunnel: ${tunnel_id}
+credentials-file: ${HOME}/.cloudflared/${tunnel_id}.json
+ingress:
+  - hostname: ${domain}
+    service: http://localhost:${backend_port}
+  - service: http_status:404
+EOF
+
+    if command_exists pm2; then
+      pm2 start cloudflared --name frostbyte-tunnel -- tunnel run "$tunnel_name" > /dev/null 2>&1
+      pm2 save > /dev/null 2>&1 || true
+      ok "Named tunnel running under PM2 as 'frostbyte-tunnel'. Panel should be reachable at https://${domain} shortly."
+    else
+      warn "PM2 not available to keep the tunnel running persistently. Start it manually with: cloudflared tunnel run ${tunnel_name}"
+    fi
+  else
+    log "Starting a temporary quick tunnel (URL changes each time this runs, no login needed)..."
+    warn "Quick tunnel URLs are random *.trycloudflare.com addresses, not your domain — fine for a quick demo, not for permanent use."
+    nohup cloudflared tunnel --url "http://localhost:${backend_port}" > "$HOME/.cloudflared-quick.log" 2>&1 &
+    sleep 5
+    local quick_url
+    quick_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$HOME/.cloudflared-quick.log" | head -1)
+    if [[ -n "$quick_url" ]]; then
+      ok "Quick tunnel live at: ${quick_url}"
+      warn "Update ALLOWED_ORIGINS in .env to this URL (then restart) if the panel rejects requests from it."
+    else
+      warn "Couldn't detect the quick tunnel URL automatically — check $HOME/.cloudflared-quick.log for it."
+    fi
+  fi
+}
+
 # --- Step: install the panel -------------------------------------------------
 do_install() {
   banner
@@ -213,14 +291,28 @@ do_install() {
   prompt_admin_credentials
 
   echo
+  echo -e "${BLUE}── Access ──────────────────────────────────────────────────${NC}"
+  echo -e "${G}Should other people be able to create their own accounts on this panel?${NC}"
+  echo -e " ${W}[1]${NC} Yes — allow public self-registration (new accounts are regular users, no admin access)"
+  echo -e " ${W}[2]${NC} No — only the admin account you're creating now can log in"
+  read -r -p "$(echo -e "${W}Choose an option [1-2]: ${NC}")" REG_CHOICE
+  if [[ "$REG_CHOICE" == "1" ]]; then
+    ALLOW_REGISTRATION="true"
+  else
+    ALLOW_REGISTRATION="false"
+  fi
+
+  echo
   echo -e "${BLUE}── Domain & SSL ────────────────────────────────────────────${NC}"
   echo -e "${G}How will people reach this panel?${NC}"
   echo -e " ${W}[1]${NC} I have a domain pointed at this server — set up HTTPS automatically (nginx + Let's Encrypt)"
-  echo -e " ${W}[2]${NC} I'm using Cloudflare in front of this server"
-  echo -e " ${W}[3]${NC} Just use this server's IP address for now (plain HTTP, no domain)"
-  read -r -p "$(echo -e "${W}Choose an option [1-3]: ${NC}")" DOMAIN_CHOICE
+  echo -e " ${W}[2]${NC} Cloudflare (standard proxy, DNS points at this server's IP)"
+  echo -e " ${W}[3]${NC} Cloudflare Tunnel (no public IP or open ports needed — good for home networks/phones)"
+  echo -e " ${W}[4]${NC} Just use this server's IP address for now (plain HTTP, no domain)"
+  read -r -p "$(echo -e "${W}Choose an option [1-4]: ${NC}")" DOMAIN_CHOICE
 
   USE_REVERSE_PROXY=false
+  USE_CF_TUNNEL=false
   case "$DOMAIN_CHOICE" in
     1)
       read -r -p "$(echo -e "${W}Domain (e.g. panel.example.com): ${NC}")" PANEL_DOMAIN
@@ -235,7 +327,14 @@ do_install() {
         ORIGIN="https://${PANEL_DOMAIN}"
       fi
       warn "Set Cloudflare's SSL/TLS mode to 'Full' or 'Full (strict)' — 'Flexible' will break login sessions."
-      warn "Point an A record at this server's IP, then either put nginx in front yourself or use a Cloudflare Tunnel."
+      warn "Point an A record at this server's IP, then either put nginx in front yourself or use option 3 (Cloudflare Tunnel) instead."
+      ;;
+    3)
+      read -r -p "$(echo -e "${W}Domain to use for the tunnel (e.g. panel.example.com): ${NC}")" PANEL_DOMAIN
+      if [[ -n "$PANEL_DOMAIN" ]]; then
+        ORIGIN="https://${PANEL_DOMAIN}"
+        USE_CF_TUNNEL=true
+      fi
       ;;
     *)
       PANEL_DOMAIN=""
@@ -273,7 +372,7 @@ do_install() {
 
   log "Creating your admin account..."
   mkdir -p .data
-  FB_ADMIN_USER="$ADMIN_USER" FB_ADMIN_PASS="$ADMIN_PASS" node -e "
+  FB_ADMIN_USER="$ADMIN_USER" FB_ADMIN_PASS="$ADMIN_PASS" FB_ALLOW_REG="$ALLOW_REGISTRATION" node -e "
     const bcrypt = require('bcryptjs');
     const fs = require('fs');
     const path = require('path');
@@ -301,12 +400,12 @@ do_install() {
       });
       fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
 
-      // Public self-registration is switched off by default once an admin
-      // account exists from the installer — the panel's admin can turn it
-      // back on later from Settings if they want open signups.
+      // Whether public self-registration stays on is the operator's choice
+      // from the prompt above — new accounts created that way are always
+      // regular 'user' role, never admin, regardless of this setting.
       const settingsFile = path.join(dataDir, 'settings.json');
       const settings = fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
-      settings.allowRegistration = false;
+      settings.allowRegistration = process.env.FB_ALLOW_REG === 'true';
       fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
     }).catch(err => {
       console.error('Failed to hash password:', err.message);
@@ -324,6 +423,10 @@ do_install() {
 
   if [[ "$USE_REVERSE_PROXY" == "true" ]] && [[ -n "${PANEL_DOMAIN:-}" ]]; then
     setup_reverse_proxy "$PANEL_DOMAIN" "$PORT_VALUE"
+  fi
+
+  if [[ "$USE_CF_TUNNEL" == "true" ]] && [[ -n "${PANEL_DOMAIN:-}" ]]; then
+    setup_cloudflare_tunnel "$PANEL_DOMAIN" "$PORT_VALUE"
   fi
 
   echo
@@ -373,11 +476,84 @@ do_update() {
   pause
 }
 
+# --- Step: restart the panel --------------------------------------------------
+do_restart() {
+  banner
+  echo -e "${W} Restart FrostByte Panel${NC}\n"
+
+  if [[ ! -d "$DIR_NAME" ]]; then
+    fail "'$DIR_NAME' not found here. Run Install first."
+    pause
+    return
+  fi
+
+  if ! command_exists pm2; then
+    fail "PM2 isn't installed — nothing to restart."
+    pause
+    return
+  fi
+
+  log "Restarting FrostByte Panel..."
+  pm2 restart frostbyte-panel 2>/dev/null
+  if [[ $? -eq 0 ]]; then
+    ok "Panel restarted."
+  else
+    warn "Couldn't restart 'frostbyte-panel' — it may not currently be running. Checking PM2 status..."
+  fi
+  pm2 status
+  pause
+}
+
+# --- Step: show system info -----------------------------------------------------
+do_system_info() {
+  banner
+  echo -e "${W} System Info${NC}\n"
+
+  echo -e "${G}Host:${NC}         $(hostname 2>/dev/null || echo unknown)"
+  echo -e "${G}OS:${NC}           $(uname -srm 2>/dev/null)"
+  if $IS_TERMUX; then
+    echo -e "${G}Environment:${NC}  Termux (Android)"
+  else
+    echo -e "${G}Environment:${NC}  Linux VPS"
+  fi
+  command_exists node && echo -e "${G}Node.js:${NC}      $(node -v)"
+  command_exists npm  && echo -e "${G}npm:${NC}          $(npm -v)"
+  command_exists docker && echo -e "${G}Docker:${NC}       $(docker -v 2>/dev/null | cut -d, -f1)"
+  command_exists pm2 && echo -e "${G}PM2:${NC}          $(pm2 -v 2>/dev/null)"
+  command_exists cloudflared && echo -e "${G}cloudflared:${NC} $(cloudflared -v 2>/dev/null | head -1)"
+
+  echo
+  if command_exists free; then
+    echo -e "${G}Memory:${NC}"
+    free -h 2>/dev/null | head -2
+  fi
+  echo
+  echo -e "${G}Disk usage (this directory):${NC}"
+  df -h . 2>/dev/null | tail -1
+
+  if [[ -d "$DIR_NAME" ]]; then
+    echo
+    echo -e "${G}FrostByte Panel:${NC}"
+    if command_exists pm2; then
+      pm2 status 2>/dev/null | grep -E "frostbyte|App name" || echo "  Not currently running under PM2."
+    fi
+    if [[ -f "$DIR_NAME/.env" ]]; then
+      local origin
+      origin=$(grep -E '^ALLOWED_ORIGINS=' "$DIR_NAME/.env" | cut -d= -f2)
+      echo -e "  ALLOWED_ORIGINS: ${origin:-<not set>}"
+    fi
+  fi
+
+  pause
+}
+
 # --- Main menu -----------------------------------------------------------------
 while true; do
   banner
   echo -e " ${W}[1]${NC} Install FrostByte Panel"
   echo -e " ${W}[2]${NC} Update FrostByte Panel"
+  echo -e " ${W}[3]${NC} Restart FrostByte Panel"
+  echo -e " ${W}[4]${NC} System Info"
   echo -e " ${RED}[0]${NC} Exit"
   echo -e " ${G}────────────────────────────────────────────────────────────────────────${NC}"
   echo -ne " ${CYAN}➜${NC} ${W}Choose an option:${NC} "
@@ -386,6 +562,8 @@ while true; do
   case "$choice" in
     1) do_install ;;
     2) do_update ;;
+    3) do_restart ;;
+    4) do_system_info ;;
     0) echo -e "\n${G}Goodbye.${NC}"; exit 0 ;;
     *) fail "Invalid option."; sleep 1 ;;
   esac

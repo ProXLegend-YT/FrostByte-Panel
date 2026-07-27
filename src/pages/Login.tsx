@@ -68,7 +68,6 @@ export default function Login() {
       <div className="frost-field">
         <div className="frost-orb frost-orb-a" />
         <div className="frost-orb frost-orb-b" />
-        <div className="frost-orb frost-orb-c" />
       </div>
       <div className="frost-grid" />
 

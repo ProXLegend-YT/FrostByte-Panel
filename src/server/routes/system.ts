@@ -65,6 +65,122 @@ router.get("/activity", async (req, res) => {
   }
 });
 
+// Proxies for plugin/mod marketplace search. Modrinth allows browser CORS,
+// but Spigot (api.spiget.org) and Hangar do not — calling them directly from
+// the client silently fails (the request never even reaches the server, so
+// there's nothing to catch), which is why plugin search looked "broken".
+// Routing every source through the backend fixes that uniformly and also
+// means one User-Agent/rate-limit policy for all three going forward.
+router.get("/marketplace/plugins", async (req, res) => {
+  const q = ((req.query.q as string) || "essentials").trim() || "essentials";
+  const source = (req.query.source as string) || "all";
+  const axios = (await import("axios")).default;
+  const results: any[] = [];
+
+  const tasks: Promise<void>[] = [];
+
+  if (source === "all" || source === "modrinth") {
+    tasks.push(
+      axios
+        .get(`https://api.modrinth.com/v2/search?query=${encodeURIComponent(q)}&facets=[["project_type:plugin"]]&limit=15`, {
+          headers: { "User-Agent": "FrostByte-Panel/1.0" },
+        })
+        .then((r) => {
+          for (const hit of r.data.hits || []) {
+            results.push({
+              id: hit.project_id,
+              source: "modrinth",
+              name: hit.title,
+              tag: hit.description,
+              downloads: hit.downloads,
+              rating: 0,
+              icon: hit.icon_url,
+            });
+          }
+        })
+        .catch(() => {})
+    );
+  }
+
+  if (source === "all" || source === "spigot") {
+    tasks.push(
+      axios
+        .get(`https://api.spiget.org/v2/search/resources/${encodeURIComponent(q)}?field=name&size=15&page=1`, {
+          headers: { "User-Agent": "FrostByte-Panel/1.0" },
+        })
+        .then((r) => {
+          if (Array.isArray(r.data)) {
+            for (const hit of r.data) {
+              results.push({
+                id: hit.id.toString(),
+                source: "spigot",
+                name: hit.name,
+                tag: hit.tag,
+                downloads: hit.downloads,
+                rating: hit.rating ? hit.rating.average : 0,
+                icon: hit.icon?.url ? `https://spigotmc.org/${hit.icon.url}` : null,
+              });
+            }
+          }
+        })
+        .catch(() => {})
+    );
+  }
+
+  if (source === "all" || source === "hangar") {
+    tasks.push(
+      axios
+        .get(`https://hangar.papermc.io/api/v1/projects?q=${encodeURIComponent(q)}&limit=15`, {
+          headers: { "User-Agent": "FrostByte-Panel/1.0" },
+        })
+        .then((r) => {
+          if (r.data?.result) {
+            for (const hit of r.data.result) {
+              results.push({
+                id: `${hit.namespace.owner}/${hit.namespace.slug}`,
+                source: "hangar",
+                name: hit.name,
+                tag: hit.description,
+                downloads: hit.stats?.downloads || 0,
+                rating: 0,
+                icon: null,
+              });
+            }
+          }
+        })
+        .catch(() => {})
+    );
+  }
+
+  await Promise.all(tasks);
+  results.sort((a, b) => b.downloads - a.downloads);
+  res.json(results);
+});
+
+router.get("/marketplace/mods", async (req, res) => {
+  const q = ((req.query.q as string) || "jei").trim() || "jei";
+  const axios = (await import("axios")).default;
+  const results: any[] = [];
+
+  try {
+    const r = await axios.get(`https://api.modrinth.com/v2/search?query=${encodeURIComponent(q)}&facets=[["project_type:mod"]]&limit=15`, {
+      headers: { "User-Agent": "FrostByte-Panel/1.0" },
+    });
+    for (const hit of r.data.hits || []) {
+      results.push({
+        id: hit.project_id,
+        name: hit.title,
+        tag: hit.description,
+        downloads: hit.downloads,
+        icon: hit.icon_url,
+      });
+    }
+  } catch { /* return whatever we have — empty is still a valid, honest result */ }
+
+  results.sort((a, b) => b.downloads - a.downloads);
+  res.json(results);
+});
+
 router.get("/versions", async (req, res) => {
   const type = (req.query.type as string) || "PAPER";
   const game = (req.query.game as string) || "minecraft";

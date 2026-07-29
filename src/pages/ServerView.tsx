@@ -250,7 +250,7 @@ export default function ServerView() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 sm:pb-0 justify-between w-full md:w-auto">
+          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 sm:pb-0 justify-between w-full md:w-auto md:pr-12">
              <button onClick={handleCopyIp} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-colors group cursor-pointer shrink-0" title="Copy Connection Info">
                 <span className="text-xs font-mono text-zinc-400 group-hover:text-zinc-300 transition-colors truncate max-w-[150px] lg:max-w-[200px]">
                   {server.ipAlias ? `${server.ipAlias}:${server.port}` : server.port}
@@ -266,10 +266,7 @@ export default function ServerView() {
                 <span className="text-xs font-medium text-zinc-400 capitalize flex">{server.status}</span>
              </div>
              <div className="hidden md:block w-px h-5 bg-white/10" />
-             <div className="hidden md:block shrink-0">
-                <NotificationBell />
-             </div>
-                
+
              <div className="flex items-center space-x-1 sm:space-x-2 shrink-0 ml-auto md:ml-1">
                 {server.status !== 'online' ? (
                   <button disabled={isProcessing} onClick={() => handleAction('start')} className="p-1.5 sm:px-3 sm:py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg transition-all border border-emerald-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
@@ -284,6 +281,12 @@ export default function ServerView() {
                   {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-orange-500/50 border-t-orange-500 rounded-full animate-spin sm:mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 sm:mr-1.5" />} <span className="hidden sm:block">Restart</span>
                 </button>
              </div>
+          </div>
+
+          {/* Desktop notification bell — kept outside the overflow-x-auto row above so its
+             dropdown never gets clipped by that scroll container. */}
+          <div className="hidden md:block absolute top-3 right-4 z-30">
+            <NotificationBell />
           </div>
         </div>
 

@@ -150,8 +150,9 @@ async function startServer() {
     });
   }
 
-  httpServer.listen(PORT, () => {
-    console.log(`FrostByte Panel running on port ${PORT}`);
+  const HOST = process.env.HOST || "0.0.0.0";
+  httpServer.listen(Number(PORT), HOST, () => {
+    console.log(`FrostByte Panel running on http://${HOST}:${PORT}`);
   });
 }
 

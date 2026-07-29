@@ -62,7 +62,7 @@ export function NotificationBell() {
     socket.on("notification", (entry: Notification) => {
       setNotifications((prev) => [entry, ...prev].slice(0, 50));
       setToast(entry);
-      setTimeout(() => setToast((current) => (current?.id === entry.id ? null : current)), 6000);
+      setTimeout(() => setToast((current) => (current?.id === entry.id ? null : current)), 3000);
     });
 
     return () => {

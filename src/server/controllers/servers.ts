@@ -463,6 +463,17 @@ export const changeServerVersion = async (req: Request, res: Response) => {
       return list;
     });
     
+    try {
+      const { notifyUser } = await import("../services/notifications.js");
+      await notifyUser(user.id, {
+        type: "success",
+        title: "Server updated",
+        message: `${server.name} was switched to ${type ? `${type} ` : ""}${version}.`,
+        serverId: id,
+        link: `/servers/${id}`,
+      });
+    } catch { /* notification is best-effort — update already succeeded */ }
+
     res.json({ success: true, version, type: server.type });
   } catch (err: any) {
     console.error("Change version error", err);
@@ -820,9 +831,20 @@ export const createBackup = async (req: Request, res: Response) => {
     const output = fs.createWriteStream(backupPath);
     const archive = new ZipArchive({ zlib: { level: 9 } });
 
-    output.on("close", () => {
+    output.on("close", async () => {
       if (!res.headersSent) {
-        logActivity({ actorId: (req as any).user.id, actorUsername: (req as any).user.username, action: "backup.create", target: filename, serverId: id });
+        const actor = (req as any).user;
+        logActivity({ actorId: actor.id, actorUsername: actor.username, action: "backup.create", target: filename, serverId: id });
+        try {
+          const { notifyUser } = await import("../services/notifications.js");
+          await notifyUser(actor.id, {
+            type: "success",
+            title: "Backup complete",
+            message: `${filename} was created successfully.`,
+            serverId: id,
+            link: `/servers/${id}/backup`,
+          });
+        } catch { /* notification is best-effort — backup already succeeded */ }
         res.json({ success: true, filename });
       }
     });
@@ -1005,6 +1027,17 @@ export const installPlugin = async (req: Request, res: Response) => {
       writer.on('error', reject);
     });
 
+    try {
+      const { notifyUser } = await import("../services/notifications.js");
+      await notifyUser((req as any).user.id, {
+        type: "success",
+        title: "Plugin installed",
+        message: `${pluginName} was installed successfully.`,
+        serverId: id,
+        link: `/servers/${id}/plugins`,
+      });
+    } catch { /* notification is best-effort — install already succeeded */ }
+
     res.json({ success: true, message: "Plugin installed successfully" });
   } catch (error: any) {
     console.error("Plugin installation failed:", error.message);
@@ -1059,6 +1092,17 @@ export const installMod = async (req: Request, res: Response) => {
       writer.on('finish', resolve);
       writer.on('error', reject);
     });
+
+    try {
+      const { notifyUser } = await import("../services/notifications.js");
+      await notifyUser((req as any).user.id, {
+        type: "success",
+        title: "Mod installed",
+        message: `${pluginName} was installed successfully.`,
+        serverId: id,
+        link: `/servers/${id}/mods`,
+      });
+    } catch { /* notification is best-effort — install already succeeded */ }
 
     res.json({ success: true, message: "Mod installed successfully" });
   } catch (error: any) {

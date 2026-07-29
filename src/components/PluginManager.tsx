@@ -23,81 +23,14 @@ export default function PluginManager({ serverId }: { serverId: string }) {
   const searchPlugins = async (searchQuery: string = "essentials") => {
     try {
       setLoading(true);
-      
       const q = searchQuery.trim() || 'essentials';
-      const results: Plugin[] = [];
-      
-      const promises = [];
-      
-      // Create a clean axios instance for external requests so we don't send our auth token
-      const externalAxios = axios.create();
-      delete externalAxios.defaults.headers.common['Authorization'];
-      
-      if (activeSource === 'all' || activeSource === 'modrinth') {
-        promises.push(
-          externalAxios.get(`https://api.modrinth.com/v2/search?query=${q}&facets=[["project_type:plugin"]]&limit=15`)
-            .then(res => {
-              res.data.hits.forEach((hit: any) => {
-                results.push({
-                  id: hit.project_id,
-                  source: 'modrinth',
-                  name: hit.title,
-                  tag: hit.description,
-                  downloads: hit.downloads,
-                  rating: 0,
-                  icon: hit.icon_url
-                });
-              });
-            }).catch(() => {})
-        );
-      }
-      
-      if (activeSource === 'all' || activeSource === 'spigot') {
-        promises.push(
-          externalAxios.get(`https://api.spiget.org/v2/search/resources/${q}?field=name&size=15&page=1`)
-            .then(res => {
-              if(Array.isArray(res.data)) {
-                res.data.forEach((hit: any) => {
-                  results.push({
-                    id: hit.id.toString(),
-                    source: 'spigot',
-                    name: hit.name,
-                    tag: hit.tag,
-                    downloads: hit.downloads,
-                    rating: hit.rating ? hit.rating.average : 0,
-                    icon: hit.icon?.url ? `https://spigotmc.org/${hit.icon.url}` : null
-                  });
-                });
-              }
-            }).catch(() => {})
-        );
-      }
-
-      if (activeSource === 'all' || activeSource === 'hangar') {
-        promises.push(
-          externalAxios.get(`https://hangar.papermc.io/api/v1/projects?q=${q}&limit=15`)
-            .then(res => {
-              if (res.data && res.data.result) {
-                res.data.result.forEach((hit: any) => {
-                  results.push({
-                    id: `${hit.namespace.owner}/${hit.namespace.slug}`,
-                    source: 'hangar',
-                    name: hit.name,
-                    tag: hit.description,
-                    downloads: hit.stats?.downloads || 0,
-                    rating: 0,
-                    icon: null
-                  });
-                });
-              }
-            }).catch(() => {})
-        );
-      }
-
-      await Promise.all(promises);
-      
-      results.sort((a, b) => b.downloads - a.downloads);
-      setPlugins(results);
+      // Search goes through our own backend, which proxies Modrinth, Spigot,
+      // and Hangar server-side. Spigot and Hangar don't allow browser CORS,
+      // so calling them directly from here would silently return nothing.
+      const res = await axios.get('/api/system/marketplace/plugins', {
+        params: { q, source: activeSource },
+      });
+      setPlugins(res.data || []);
     } catch (e) {
       console.error(e);
       setPlugins([]);

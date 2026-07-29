@@ -20,30 +20,12 @@ export default function ModManager({ serverId }: { serverId: string }) {
   const searchMods = async (searchQuery: string = "jei") => {
     try {
       setLoading(true);
-      
       const q = searchQuery.trim() || 'jei';
-      const results: Mod[] = [];
-      
-      const externalAxios = axios.create();
-      delete externalAxios.defaults.headers.common['Authorization'];
-      
-      await externalAxios.get(`https://api.modrinth.com/v2/search?query=${q}&facets=[["project_type:mod"]]&limit=15`)
-        .then(res => {
-          res.data.hits.forEach((hit: any) => {
-            results.push({
-              id: hit.project_id,
-              name: hit.title,
-              tag: hit.description,
-              downloads: hit.downloads,
-              icon: hit.icon_url
-            });
-          });
-        }).catch(() => {});
-      
-      results.sort((a, b) => b.downloads - a.downloads);
-      setMods(results);
+      const res = await axios.get('/api/system/marketplace/mods', { params: { q } });
+      setMods(res.data || []);
     } catch (e) {
       console.error(e);
+      setMods([]);
     } finally {
       setLoading(false);
     }

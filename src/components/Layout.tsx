@@ -45,7 +45,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none" />
 
         {/* Mobile Header (only shown on mobile screens) */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-transparent backdrop-blur-md border-b border-white/5 flex-shrink-0 relative z-10">
+        <div className="md:hidden flex items-center justify-between p-4 bg-transparent backdrop-blur-md border-b border-white/5 flex-shrink-0 relative z-30">
           <div className="flex items-center gap-2">
             {panelLogo ? (
               <img src={panelLogo} alt="Logo" className="w-6 h-6 rounded object-cover" />
@@ -63,7 +63,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Desktop Header (notification bell only — sidebar carries branding) */}
-        <div className="hidden md:flex items-center justify-end px-6 py-3 flex-shrink-0 relative z-10">
+        <div className="hidden md:flex items-center justify-end px-6 py-3 flex-shrink-0 relative z-30">
           <NotificationBell />
         </div>
         

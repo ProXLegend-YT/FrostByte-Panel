@@ -21,7 +21,11 @@ router.get("/settings", async (req, res) => {
     panelBackgroundImage: settings.panelBackgroundImage || "",
     panelBackgroundBlur: settings.panelBackgroundBlur !== undefined ? settings.panelBackgroundBlur : 10,
     enableLoginAnimation: settings.enableLoginAnimation !== undefined ? settings.enableLoginAnimation : true,
-    allowRegistration: settings.allowRegistration !== undefined ? settings.allowRegistration : true
+    allowRegistration: settings.allowRegistration !== undefined ? settings.allowRegistration : true,
+    // Only the boolean is public — the actual quota numbers (RAM/CPU/disk
+    // caps) stay behind auth below, no reason to expose host capacity
+    // details to an unauthenticated visitor.
+    allowUserServerCreation: settings.allowUserServerCreation === true,
   });
 });
 

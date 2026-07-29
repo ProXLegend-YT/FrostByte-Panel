@@ -93,9 +93,54 @@ export const getServerStats = async (req: Request, res: Response) => {
 
 export const createServer = async (req: Request, res: Response) => {
   const user = (req as any).user;
-  if (user.role !== "admin" && user.role !== "owner") {
-    return res.status(403).json({ error: "Only admins can create servers" });
+  const isPrivileged = user.role === "admin" || user.role === "owner";
+
+  // Permission resolution order for normal users:
+  //   1. An explicit per-user override (Settings → per-user "Server Access")
+  //      always wins, whether it grants or denies.
+  //   2. Otherwise, fall back to the panel-wide default
+  //      (Settings → Administrator Controls → "Allow normal users to
+  //      create servers", with its own shared quota).
+  // This means admins can flip on server creation for everyone at once via
+  // the global switch, while still being able to hand-tune or lock out a
+  // specific account without that override being clobbered by the global
+  // setting.
+  let effectiveCaps: { maxServers: number; maxRamGb: number; maxCpuPercent: number; maxDiskGb: number } | null = null;
+  if (!isPrivileged) {
+    const users = await readJSON("users.json") || [];
+    const record = users.find((u: any) => u.id === user.id);
+    const hasPerUserOverride = !!record && record.canCreateServers !== undefined;
+
+    if (hasPerUserOverride) {
+      if (!record.canCreateServers) {
+        return res.status(403).json({ error: "You don't have permission to create servers. Ask an admin to enable this for your account." });
+      }
+      effectiveCaps = {
+        maxServers: typeof record.maxServers === "number" ? record.maxServers : 1,
+        maxRamGb: typeof record.maxRamGb === "number" ? record.maxRamGb : 4,
+        maxCpuPercent: typeof record.maxCpuPercent === "number" ? record.maxCpuPercent : 200,
+        maxDiskGb: typeof record.maxDiskGb === "number" ? record.maxDiskGb : 10,
+      };
+    } else {
+      const settings = await readJSON("settings.json") || {};
+      if (settings.allowUserServerCreation !== true) {
+        return res.status(403).json({ error: "You don't have permission to create servers. Ask an admin to enable this." });
+      }
+      effectiveCaps = {
+        maxServers: typeof settings.defaultMaxServers === "number" ? settings.defaultMaxServers : 1,
+        maxRamGb: typeof settings.defaultMaxRamGb === "number" ? settings.defaultMaxRamGb : 4,
+        maxCpuPercent: typeof settings.defaultMaxCpuPercent === "number" ? settings.defaultMaxCpuPercent : 200,
+        maxDiskGb: typeof settings.defaultMaxDiskGb === "number" ? settings.defaultMaxDiskGb : 10,
+      };
+    }
+
+    const allServers = await readJSON("servers.json") || [];
+    const ownedCount = allServers.filter((s: any) => s.owner === user.id).length;
+    if (ownedCount >= effectiveCaps.maxServers) {
+      return res.status(403).json({ error: `You've reached your server limit (${effectiveCaps.maxServers}). Ask an admin to raise it.` });
+    }
   }
+
   const { name, ram, port, version, theme, cpu, disk, owner, ipAlias, type, game, discordToken, startCommand, serverPassword, srcdsToken } = req.body;
   if (!name || !ram || !port) {
     res.status(400).json({ error: "Missing required fields (name, ram, port)" });
@@ -106,6 +151,27 @@ export const createServer = async (req: Request, res: Response) => {
   }
   if (cpu !== undefined && (typeof cpu !== "number" || cpu < MIN_CPU_PERCENT || cpu > MAX_CPU_PERCENT)) {
     return res.status(400).json({ error: `CPU must be between ${MIN_CPU_PERCENT}% and ${MAX_CPU_PERCENT}%` });
+  }
+
+  // A permitted normal user is further bounded by their effective caps
+  // (per-user override if set, otherwise the panel-wide default), so one
+  // enabled account can't request a server sized to eat the whole host.
+  if (!isPrivileged && effectiveCaps) {
+    if (ram > effectiveCaps.maxRamGb) {
+      return res.status(403).json({ error: `Your account is limited to ${effectiveCaps.maxRamGb}GB RAM per server.` });
+    }
+    if ((cpu || 100) > effectiveCaps.maxCpuPercent) {
+      return res.status(403).json({ error: `Your account is limited to ${effectiveCaps.maxCpuPercent}% CPU per server.` });
+    }
+    if ((disk || 10) > effectiveCaps.maxDiskGb) {
+      return res.status(403).json({ error: `Your account is limited to ${effectiveCaps.maxDiskGb}GB disk per server.` });
+    }
+    // Normal users can only ever create servers for themselves — owner
+    // assignment stays an admin-only capability so a permitted user can't
+    // use their quota to spin up servers on someone else's behalf.
+    if (owner && owner !== user.id) {
+      return res.status(403).json({ error: "Only admins can assign a server to another user." });
+    }
   }
 
   const { getGameDefinition } = await import("../gameDefinitions.js");
@@ -174,6 +240,16 @@ export const createServer = async (req: Request, res: Response) => {
     );
     await createSftpUser(id).catch(e => console.error("SFTP user creation failed:", e));
     logActivity({ actorId: user.id, actorUsername: user.username, action: "server.create", target: name, serverId: id });
+    try {
+      const { notifyUser } = await import("../services/notifications.js");
+      await notifyUser(user.id, {
+        type: "success",
+        title: "Server created",
+        message: `${name} is ready.`,
+        serverId: id,
+        link: `/servers/${id}`,
+      });
+    } catch { /* notification is best-effort — server already created */ }
     res.json(serverData);
   } catch (err: any) {
     console.error(err);

@@ -10,6 +10,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [panelBackgroundBlur, setPanelBackgroundBlur] = useState<number>(10);
   const [enableLoginAnimation, setEnableLoginAnimation] = useState<boolean>(true);
   const [allowRegistration, setAllowRegistration] = useState<boolean>(true);
+  const [allowUserServerCreation, setAllowUserServerCreation] = useState<boolean>(false);
 
   const fetchSettings = async () => {
     try {
@@ -20,6 +21,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       if (res.data.panelBackgroundBlur !== undefined) setPanelBackgroundBlur(res.data.panelBackgroundBlur);
       if (res.data.enableLoginAnimation !== undefined) setEnableLoginAnimation(res.data.enableLoginAnimation);
       if (res.data.allowRegistration !== undefined) setAllowRegistration(res.data.allowRegistration);
+      if (res.data.allowUserServerCreation !== undefined) setAllowUserServerCreation(res.data.allowUserServerCreation);
     } catch (e) {}
   };
 
@@ -35,6 +37,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       panelBackgroundBlur, setPanelBackgroundBlur, 
       enableLoginAnimation, setEnableLoginAnimation,
       allowRegistration, setAllowRegistration,
+      allowUserServerCreation, setAllowUserServerCreation,
       fetchSettings 
     }}>
       {children}

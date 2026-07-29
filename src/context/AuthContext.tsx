@@ -60,8 +60,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // features, use isAdmin rather than comparing role === "admin" directly.
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
+  // Normal users can be individually granted server-creation rights by an
+  // admin (see Settings → Administrator Controls). Admins/owners always
+  // have this implicitly.
+  const canCreateServers = isAdmin || !!user?.canCreateServers;
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, isAdmin, canCreateServers }}>
       {children}
     </AuthContext.Provider>
   );

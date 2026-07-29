@@ -19,8 +19,8 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { GlobalBackground } from "./components/GlobalBackground";
 import { SystemUpdateListener } from "./components/SystemUpdateListener";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, requireCanCreateServers }: { children: React.ReactNode; requireCanCreateServers?: boolean }) => {
+  const { user, loading, canCreateServers } = useAuth();
   if (loading) return (
     <div className="h-[100dvh] w-full flex items-center justify-center bg-transparent text-white">
       <motion.div
@@ -31,6 +31,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     </div>
   );
   if (!user) return <Navigate to="/login" />;
+  if (requireCanCreateServers && !canCreateServers) return <Navigate to="/servers" />;
   return <Layout>{children}</Layout>;
 };
 
@@ -43,7 +44,7 @@ const AnimatedRoutes = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/servers" element={<ProtectedRoute><ServerList /></ProtectedRoute>} />
-          <Route path="/servers/create" element={<ProtectedRoute><CreateServer /></ProtectedRoute>} />
+          <Route path="/servers/create" element={<ProtectedRoute requireCanCreateServers><CreateServer /></ProtectedRoute>} />
           <Route path="/servers/:id/*" element={<ProtectedRoute><ServerView /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/api-keys" element={<ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />

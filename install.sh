@@ -54,6 +54,48 @@ if ! $IS_TERMUX && [[ $EUID -ne 0 ]]; then
   fi
 fi
 
+# Cloud dev containers (CodeSandbox, some Docker-in-Docker devboxes) often
+# have /tmp or apt's cache dir on a different filesystem/overlay than where
+# dpkg tries to atomically install, which makes `apt-get install` fail with
+# "Invalid cross-device link" / "paste subprocess was killed". When we
+# detect one of these environments — or apt simply fails — we skip apt for
+# Node.js entirely and install the official prebuilt tarball instead, since
+# that's just an archive extract with no dpkg/rename step involved.
+IS_CLOUD_DEVBOX=false
+if [[ -n "${CODESANDBOX_SSE:-}" ]] || [[ -n "${CODESANDBOX_HOST:-}" ]] || [[ -d "/.codesandbox" ]] || [[ "${HOSTNAME:-}" == *"codesandbox"* ]]; then
+  IS_CLOUD_DEVBOX=true
+fi
+
+install_node_from_tarball() {
+  # Installs Node.js from the official prebuilt binary tarball — this is a
+  # plain archive extract, so it works even when the filesystem can't
+  # support dpkg's usual atomic-rename install step.
+  log "Installing Node.js 20.x from official binary (dpkg-free fallback)..."
+  local node_arch=""
+  case "$(uname -m)" in
+    x86_64)  node_arch="x64" ;;
+    aarch64) node_arch="arm64" ;;
+    armv7l)  node_arch="armv7l" ;;
+    *) fail "Unsupported architecture for binary Node.js install: $(uname -m)"; return 1 ;;
+  esac
+  local node_version="v20.18.1"
+  local tmp_tarball
+  tmp_tarball="$(mktemp -d)/node.tar.xz"
+  if ! curl -fsSL "https://nodejs.org/dist/${node_version}/node-${node_version}-linux-${node_arch}.tar.xz" -o "$tmp_tarball"; then
+    fail "Failed to download Node.js binary."
+    return 1
+  fi
+  $SUDO mkdir -p /usr/local/lib/nodejs
+  $SUDO tar -xJf "$tmp_tarball" -C /usr/local/lib/nodejs
+  local extracted_dir
+  extracted_dir="$(find /usr/local/lib/nodejs -maxdepth 1 -type d -name "node-${node_version}-linux-${node_arch}" | head -1)"
+  $SUDO ln -sf "${extracted_dir}/bin/node" /usr/local/bin/node
+  $SUDO ln -sf "${extracted_dir}/bin/npm" /usr/local/bin/npm
+  $SUDO ln -sf "${extracted_dir}/bin/npx" /usr/local/bin/npx
+  rm -rf "$(dirname "$tmp_tarball")"
+  hash -r
+}
+
 random_hex() {
   local bytes="$1"
   openssl rand -hex "$bytes" 2>/dev/null || node -e "console.log(require('crypto').randomBytes($bytes).toString('hex'))"
@@ -68,16 +110,33 @@ install_dependencies() {
     pkg install -y git nodejs curl python clang make openssl-tool
   else
     if [[ -n "$SUDO" ]] || [[ $EUID -eq 0 ]]; then
-      $SUDO apt-get update -y
-      $SUDO apt-get install -y curl git ca-certificates
-      if ! command_exists node || [[ "$(node -v | sed 's/v//' | cut -d. -f1)" -lt 20 ]]; then
-        log "Installing Node.js 20.x..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO -E bash -
-        $SUDO apt-get install -y nodejs
+      $SUDO apt-get update -y || warn "apt-get update reported errors — continuing, since curl/git are often already present in this image."
+
+      # Don't treat a failed curl/git install as fatal by itself — on cloud
+      # devboxes these are frequently preinstalled, and apt failing here is
+      # usually the cross-device dpkg issue, not a missing-package issue.
+      if ! command_exists curl || ! command_exists git; then
+        $SUDO apt-get install -y curl git ca-certificates || warn "apt-get install for curl/git reported errors."
       fi
+
+      if ! command_exists node || [[ "$(node -v 2>/dev/null | sed 's/v//' | cut -d. -f1)" -lt 20 ]]; then
+        if $IS_CLOUD_DEVBOX; then
+          install_node_from_tarball || warn "Binary Node.js install failed, trying apt as a last resort..."
+        fi
+        if ! command_exists node || [[ "$(node -v 2>/dev/null | sed 's/v//' | cut -d. -f1)" -lt 20 ]]; then
+          log "Installing Node.js 20.x via apt..."
+          if curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO -E bash - && $SUDO apt-get install -y nodejs; then
+            :
+          else
+            warn "apt-based Node.js install failed — falling back to the official binary tarball."
+            install_node_from_tarball
+          fi
+        fi
+      fi
+
       if ! command_exists docker; then
         log "Installing Docker..."
-        curl -fsSL https://get.docker.com | $SUDO sh
+        curl -fsSL https://get.docker.com | $SUDO sh || warn "Docker install failed — you can skip this if you don't need containerized game servers here."
       fi
     else
       fail "Need root or sudo to install system packages. Re-run as root or with a sudo-capable user."

@@ -9,7 +9,7 @@ import { LoadingOverlay } from "../components/LoadingOverlay";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin } = useAuth();
-  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enableLoginAnimation, allowRegistration, fetchSettings } = useSettings();
+  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enableLoginAnimation, allowRegistration, allowUserServerCreation, fetchSettings } = useSettings();
   const [users, setUsers] = useState<any[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +17,9 @@ export default function SettingsPage() {
   const [newPanelName, setNewPanelName] = useState(panelName);
   const [newEnableLoginAnimation, setNewEnableLoginAnimation] = useState(enableLoginAnimation);
   const [newAllowRegistration, setNewAllowRegistration] = useState(allowRegistration);
+  const [newAllowUserServerCreation, setNewAllowUserServerCreation] = useState(allowUserServerCreation);
+  const [globalServerDefaults, setGlobalServerDefaults] = useState({ defaultMaxServers: 1, defaultMaxRamGb: 4, defaultMaxCpuPercent: 200, defaultMaxDiskGb: 10 });
+  const [isSavingGlobalDefaults, setIsSavingGlobalDefaults] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [croppingType, setCroppingType] = useState<"logo" | "background" | null>(null);
   const [bgAspectRatio, setBgAspectRatio] = useState<number>(16/9);
@@ -25,6 +28,11 @@ export default function SettingsPage() {
   const [oldPassword, setOldPassword] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [adminUserNewPassword, setAdminUserNewPassword] = useState("");
+  const [permissionsUserId, setPermissionsUserId] = useState<string | null>(null);
+  const [permissionsDraft, setPermissionsDraft] = useState<{ canCreateServers: boolean; maxServers: number; maxRamGb: number; maxCpuPercent: number; maxDiskGb: number }>({
+    canCreateServers: false, maxServers: 1, maxRamGb: 4, maxCpuPercent: 200, maxDiskGb: 10,
+  });
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -50,7 +58,20 @@ export default function SettingsPage() {
     setNewPanelName(panelName);
     setNewEnableLoginAnimation(enableLoginAnimation);
     setNewAllowRegistration(allowRegistration);
-  }, [panelName, enableLoginAnimation, allowRegistration]);
+    setNewAllowUserServerCreation(allowUserServerCreation);
+  }, [panelName, enableLoginAnimation, allowRegistration, allowUserServerCreation]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    axios.get("/api/system/settings/server-defaults").then((res) => {
+      setGlobalServerDefaults({
+        defaultMaxServers: res.data.defaultMaxServers,
+        defaultMaxRamGb: res.data.defaultMaxRamGb,
+        defaultMaxCpuPercent: res.data.defaultMaxCpuPercent,
+        defaultMaxDiskGb: res.data.defaultMaxDiskGb,
+      });
+    }).catch(() => {});
+  }, [isAdmin]);
 
   const fetchUsers = async () => {
     if (!isAdmin) return;
@@ -160,6 +181,47 @@ export default function SettingsPage() {
       await axios.delete(`/api/system/users/${id}`);
       fetchUsers();
     } catch (e) {}
+  };
+
+  const openServerPermissions = (u: any) => {
+    if (permissionsUserId === u.id) {
+      setPermissionsUserId(null);
+      return;
+    }
+    setPermissionsUserId(u.id);
+    setPermissionsDraft({
+      canCreateServers: !!u.canCreateServers,
+      maxServers: u.maxServers ?? 1,
+      maxRamGb: u.maxRamGb ?? 4,
+      maxCpuPercent: u.maxCpuPercent ?? 200,
+      maxDiskGb: u.maxDiskGb ?? 10,
+    });
+  };
+
+  const saveServerPermissions = async (id: string) => {
+    setIsSavingPermissions(true);
+    try {
+      await axios.put(`/api/system/users/${id}/server-permissions`, permissionsDraft);
+      fetchUsers();
+      setPermissionsUserId(null);
+    } catch (e: any) {
+      alert(e.response?.data?.error || "Error updating server access");
+    } finally {
+      setIsSavingPermissions(false);
+    }
+  };
+
+  const resetServerPermissionsToGlobal = async (id: string) => {
+    setIsSavingPermissions(true);
+    try {
+      await axios.put(`/api/system/users/${id}/server-permissions`, { clearOverride: true });
+      fetchUsers();
+      setPermissionsUserId(null);
+    } catch (e: any) {
+      alert(e.response?.data?.error || "Error resetting server access");
+    } finally {
+      setIsSavingPermissions(false);
+    }
   };
 
   return (
@@ -340,6 +402,79 @@ export default function SettingsPage() {
                     <span className="text-xs text-zinc-500">When off, only admins can create new accounts.</span>
                   </div>
                 </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newAllowUserServerCreation}
+                      onChange={async (e) => {
+                        const val = e.target.checked;
+                        setNewAllowUserServerCreation(val);
+                        try {
+                          await axios.put("/api/system/settings", { allowUserServerCreation: val });
+                          fetchSettings();
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-zinc-300 block">Enable Server Creation For Normal Users</span>
+                    <span className="text-xs text-zinc-500">Applies to every user without an individual override below.</span>
+                  </div>
+                </label>
+
+                {newAllowUserServerCreation && (
+                  <div className="ml-14 p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                    <p className="text-xs text-zinc-500">Shared limits applied to any normal user who doesn't have their own custom "Server Access" setting.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Servers per user</label>
+                        <input type="number" min={0} max={50} value={globalServerDefaults.defaultMaxServers}
+                          onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxServers: Number(e.target.value) }))}
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max RAM (GB) per server</label>
+                        <input type="number" min={0.5} max={128} step={0.5} value={globalServerDefaults.defaultMaxRamGb}
+                          onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxRamGb: Number(e.target.value) }))}
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max CPU (%) per server</label>
+                        <input type="number" min={10} max={1600} value={globalServerDefaults.defaultMaxCpuPercent}
+                          onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxCpuPercent: Number(e.target.value) }))}
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Disk (GB) per server</label>
+                        <input type="number" min={1} max={1000} value={globalServerDefaults.defaultMaxDiskGb}
+                          onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxDiskGb: Number(e.target.value) }))}
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                      </div>
+                    </div>
+                    <button
+                      disabled={isSavingGlobalDefaults}
+                      onClick={async () => {
+                        setIsSavingGlobalDefaults(true);
+                        try {
+                          await axios.put("/api/system/settings", globalServerDefaults);
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setIsSavingGlobalDefaults(false);
+                        }
+                      }}
+                      className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      {isSavingGlobalDefaults ? "Saving..." : "Save Limits"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -551,6 +686,11 @@ export default function SettingsPage() {
                           </p>
                         </div>
                         <div className="flex gap-2">
+                          {u.id !== user.id && u.role !== 'admin' && u.role !== 'owner' && (
+                            <button onClick={() => openServerPermissions(u)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${u.canCreateServers ? 'text-emerald-300 bg-emerald-400/10 hover:bg-emerald-400/20' : 'text-zinc-400 bg-white/[0.04] hover:bg-white/[0.08]'}`}>
+                              {permissionsUserId === u.id ? "Cancel" : u.canCreateServers ? "Server Access ✓" : "Server Access"}
+                            </button>
+                          )}
                           {u.id !== user.id && (
                             <button onClick={() => {
                               if (editingUserId === u.id) {
@@ -570,6 +710,70 @@ export default function SettingsPage() {
                           )}
                         </div>
                       </div>
+                      {permissionsUserId === u.id && (
+                        <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+                          <p className="text-xs text-zinc-500">
+                            {u.hasServerPermissionOverride
+                              ? "This user has a custom setting that overrides the global default below."
+                              : "This user is currently following the panel-wide global default (Server Access section above)."}
+                          </p>
+                          <label className="flex items-center gap-3 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={permissionsDraft.canCreateServers}
+                              onChange={(e) => setPermissionsDraft(d => ({ ...d, canCreateServers: e.target.checked }))}
+                              className="w-4 h-4 rounded accent-cyan-500"
+                            />
+                            <span className="text-sm text-zinc-200">Allow this user to create their own servers</span>
+                          </label>
+                          {permissionsDraft.canCreateServers && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Servers</label>
+                                <input type="number" min={0} max={50} value={permissionsDraft.maxServers}
+                                  onChange={(e) => setPermissionsDraft(d => ({ ...d, maxServers: Number(e.target.value) }))}
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max RAM (GB) per server</label>
+                                <input type="number" min={0.5} max={128} step={0.5} value={permissionsDraft.maxRamGb}
+                                  onChange={(e) => setPermissionsDraft(d => ({ ...d, maxRamGb: Number(e.target.value) }))}
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max CPU (%) per server</label>
+                                <input type="number" min={10} max={1600} value={permissionsDraft.maxCpuPercent}
+                                  onChange={(e) => setPermissionsDraft(d => ({ ...d, maxCpuPercent: Number(e.target.value) }))}
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Disk (GB) per server</label>
+                                <input type="number" min={1} max={1000} value={permissionsDraft.maxDiskGb}
+                                  onChange={(e) => setPermissionsDraft(d => ({ ...d, maxDiskGb: Number(e.target.value) }))}
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              disabled={isSavingPermissions}
+                              onClick={() => saveServerPermissions(u.id)}
+                              className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                            >
+                              {isSavingPermissions ? "Saving..." : "Save Access"}
+                            </button>
+                            {u.hasServerPermissionOverride && (
+                              <button
+                                disabled={isSavingPermissions}
+                                onClick={() => resetServerPermissionsToGlobal(u.id)}
+                                className="px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                Use Global Default
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       {editingUserId === u.id && (
                         <div className="mt-4 pt-4 border-t border-white/5 flex gap-3">
                           <input 

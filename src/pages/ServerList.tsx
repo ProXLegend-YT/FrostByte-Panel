@@ -8,7 +8,7 @@ import ServerLiveStats from "../components/ServerLiveStats";
 
 export default function ServerList() {
   const [servers, setServers] = useState<any[]>([]);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, canCreateServers } = useAuth();
 
   const fetchServers = async () => {
     try {
@@ -49,7 +49,7 @@ export default function ServerList() {
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-lg">Instances</h1>
           <p className="text-cyan-300/80 font-bold uppercase tracking-widest text-sm mt-2">Manage and monitor your server fleet.</p>
         </div>
-        {isAdmin && (
+        {canCreateServers && (
           <Link to="/servers/create" className="px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10 text-sm whitespace-nowrap inline-flex items-center self-start md:self-auto">
             <Plus size={18} className="mr-2" />
             New Instance
@@ -116,7 +116,7 @@ export default function ServerList() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">No Instances Running</h3>
             <p className="max-w-sm text-center mb-6 text-sm">You haven't deployed any servers yet. Create one to start managing your game instances.</p>
-            {isAdmin && (
+            {canCreateServers && (
                 <Link to="/servers/create" className="px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10 text-sm">
                     Deploy your first server
                 </Link>

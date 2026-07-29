@@ -72,9 +72,15 @@ export default function CreateServer() {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const ramPresets = [2, 4, 8, 16, 24, 32, 48, 64];
+  // Non-admins are capped to whatever an admin granted them — filter presets
+  // down and clamp free entry so they can't even attempt an over-cap value
+  // client-side (the backend enforces this regardless, but this avoids a
+  // confusing rejection after filling out the whole form).
+  const userRamCap = isAdmin ? Infinity : (user?.maxRamGb ?? 4);
+  const visibleRamPresets = ramPresets.filter(v => v <= userRamCap);
 
   useEffect(() => {
     axios.get("/api/system/games").then((res) => {
@@ -86,20 +92,28 @@ export default function CreateServer() {
       setTotalSystemRam(res.data.totalMemory / (1024 * 1024 * 1024));
     }).catch(() => {});
 
-    axios.get("/api/auth/users").then((res) => {
-      setUsers(res.data);
-      if (res.data.length > 0) {
-        const defaultOwner = res.data.find((u: any) => u.id === user?.id)?.id || res.data[0].id;
-        setOwner(defaultOwner);
-      }
-    }).catch(() => {});
-  }, [user]);
+    if (isAdmin) {
+      axios.get("/api/auth/users").then((res) => {
+        setUsers(res.data);
+        if (res.data.length > 0) {
+          const defaultOwner = res.data.find((u: any) => u.id === user?.id)?.id || res.data[0].id;
+          setOwner(defaultOwner);
+        }
+      }).catch(() => {});
+    } else if (user?.id) {
+      // Normal users always own what they create — no picker needed.
+      setOwner(user.id);
+    }
+  }, [user, isAdmin]);
 
   const selectGame = (game: GameDef) => {
     setSelectedGame(game);
-    setRam(game.defaultRam.toString());
-    setCpu(game.defaultCpu.toString());
-    setDisk(game.defaultDisk.toString());
+    const ramCap = isAdmin ? Infinity : (user?.maxRamGb ?? 4);
+    const cpuCap = isAdmin ? Infinity : (user?.maxCpuPercent ?? 200);
+    const diskCap = isAdmin ? Infinity : (user?.maxDiskGb ?? 10);
+    setRam(Math.min(game.defaultRam, ramCap).toString());
+    setCpu(Math.min(game.defaultCpu, cpuCap).toString());
+    setDisk(Math.min(game.defaultDisk, diskCap).toString());
     setPort(game.id === "minecraft" ? "25565" : "");
     if (game.subtypes && game.subtypes.length > 0) {
       setType(game.subtypes[0].id);
@@ -426,7 +440,7 @@ export default function CreateServer() {
                     <MemoryStick className="w-4 h-4 mr-2 text-cyan-300" /> Memory (RAM)
                   </label>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {ramPresets.map(val => (
+                    {visibleRamPresets.map(val => (
                       <button
                         key={val}
                         type="button"
@@ -442,11 +456,22 @@ export default function CreateServer() {
                   <input
                     type="number"
                     min={0.5}
+                    max={isAdmin ? undefined : userRamCap}
                     step={0.5}
                     value={ram}
-                    onChange={e => setRam(e.target.value)}
+                    onChange={e => {
+                      const next = e.target.value;
+                      if (!isAdmin && next !== "" && Number(next) > userRamCap) {
+                        setRam(userRamCap.toString());
+                      } else {
+                        setRam(next);
+                      }
+                    }}
                     className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                   />
+                  {!isAdmin && (
+                    <p className="text-xs text-zinc-500 mt-2">Your account is limited to {userRamCap}GB RAM per server.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-5">
@@ -457,10 +482,22 @@ export default function CreateServer() {
                     <input
                       type="number"
                       min={10}
+                      max={isAdmin ? undefined : (user?.maxCpuPercent ?? 200)}
                       value={cpu}
-                      onChange={e => setCpu(e.target.value)}
+                      onChange={e => {
+                        const next = e.target.value;
+                        const cap = user?.maxCpuPercent ?? 200;
+                        if (!isAdmin && next !== "" && Number(next) > cap) {
+                          setCpu(cap.toString());
+                        } else {
+                          setCpu(next);
+                        }
+                      }}
                       className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
+                    {!isAdmin && (
+                      <p className="text-xs text-zinc-500 mt-2">Capped at {user?.maxCpuPercent ?? 200}%.</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
@@ -469,10 +506,22 @@ export default function CreateServer() {
                     <input
                       type="number"
                       min={1}
+                      max={isAdmin ? undefined : (user?.maxDiskGb ?? 10)}
                       value={disk}
-                      onChange={e => setDisk(e.target.value)}
+                      onChange={e => {
+                        const next = e.target.value;
+                        const cap = user?.maxDiskGb ?? 10;
+                        if (!isAdmin && next !== "" && Number(next) > cap) {
+                          setDisk(cap.toString());
+                        } else {
+                          setDisk(next);
+                        }
+                      }}
                       className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
+                    {!isAdmin && (
+                      <p className="text-xs text-zinc-500 mt-2">Capped at {user?.maxDiskGb ?? 10}GB.</p>
+                    )}
                   </div>
                 </div>
 
@@ -508,19 +557,21 @@ export default function CreateServer() {
                   </div>
                 </div>
 
-                <div className="relative z-20">
-                  <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                    <User className="w-4 h-4 mr-2 text-cyan-300" /> Assign Server Owner
-                  </label>
-                  <SearchableDropdown
-                    value={owner}
-                    onChange={setOwner}
-                    options={users.map(u => ({ value: u.id, label: `${u.username} ${u.id === user?.id ? "(You)" : `(${u.role})`}` }))}
-                    placeholder="Select a user..."
-                    searchPlaceholder="Search users..."
-                  />
-                  <p className="text-xs text-zinc-500 mt-2">Select which user owns and has access to this server.</p>
-                </div>
+                {isAdmin && (
+                  <div className="relative z-20">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
+                      <User className="w-4 h-4 mr-2 text-cyan-300" /> Assign Server Owner
+                    </label>
+                    <SearchableDropdown
+                      value={owner}
+                      onChange={setOwner}
+                      options={users.map(u => ({ value: u.id, label: `${u.username} ${u.id === user?.id ? "(You)" : `(${u.role})`}` }))}
+                      placeholder="Select a user..."
+                      searchPlaceholder="Search users..."
+                    />
+                    <p className="text-xs text-zinc-500 mt-2">Select which user owns and has access to this server.</p>
+                  </div>
+                )}
 
                 <div className="pt-4 border-t border-white/5">
                   {loading && (

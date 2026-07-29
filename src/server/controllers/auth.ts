@@ -102,8 +102,41 @@ export const logout = (req: Request, res: Response) => {
   res.json({ message: "Logged out" });
 };
 
-export const getMe = (req: Request, res: Response) => {
-  res.json({ user: (req as any).user });
+export const getMe = async (req: Request, res: Response) => {
+  const decoded = (req as any).user;
+  try {
+    const users = await readJSON("users.json") || [];
+    const record = users.find((u: any) => u.id === decoded.id);
+    if (record) {
+      const hasPerUserOverride = record.canCreateServers !== undefined;
+      let effective: { canCreateServers: boolean; maxServers: number; maxRamGb: number; maxCpuPercent: number; maxDiskGb: number };
+
+      if (hasPerUserOverride) {
+        effective = {
+          canCreateServers: !!record.canCreateServers,
+          maxServers: typeof record.maxServers === "number" ? record.maxServers : 1,
+          maxRamGb: typeof record.maxRamGb === "number" ? record.maxRamGb : 4,
+          maxCpuPercent: typeof record.maxCpuPercent === "number" ? record.maxCpuPercent : 200,
+          maxDiskGb: typeof record.maxDiskGb === "number" ? record.maxDiskGb : 10,
+        };
+      } else {
+        // No explicit per-user setting — fall back to whatever the panel's
+        // global default is (Settings → Administrator Controls).
+        const settings = await readJSON("settings.json") || {};
+        effective = {
+          canCreateServers: settings.allowUserServerCreation === true,
+          maxServers: typeof settings.defaultMaxServers === "number" ? settings.defaultMaxServers : 1,
+          maxRamGb: typeof settings.defaultMaxRamGb === "number" ? settings.defaultMaxRamGb : 4,
+          maxCpuPercent: typeof settings.defaultMaxCpuPercent === "number" ? settings.defaultMaxCpuPercent : 200,
+          maxDiskGb: typeof settings.defaultMaxDiskGb === "number" ? settings.defaultMaxDiskGb : 10,
+        };
+      }
+
+      res.json({ user: { ...decoded, ...effective } });
+      return;
+    }
+  } catch { /* fall through to the JWT-only response below */ }
+  res.json({ user: decoded });
 };
 
 export const getUsers = async (req: Request, res: Response) => {

@@ -3,7 +3,7 @@ import { readJSON, writeJSON, updateJSON } from "../services/db.js";
 import { createServerContainer, startContainer, stopContainer, restartContainer, deleteContainer, getContainerStatus, sendContainerCommand, attachContainerSocket, getContainerStats } from "../services/docker.js";
 import { createSftpUser, deleteSftpUser } from "../services/sftp.js";
 import { logActivity } from "../services/activityLog.js";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID as uuidv4 } from "crypto";
 import fs from "fs-extra";
 import path from "path";
 import { ZipArchive } from "archiver";

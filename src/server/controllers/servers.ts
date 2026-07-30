@@ -6,8 +6,16 @@ import { logActivity } from "../services/activityLog.js";
 import { randomUUID as uuidv4 } from "crypto";
 import fs from "fs-extra";
 import path from "path";
-import { ZipArchive } from "archiver";
-import extract from "extract-zip";
+// NOTE: archiver is intentionally never statically imported here. Its newer
+// major versions are published as ESM-only, and esbuild compiles a static
+// `import` into a `require()` call in the CJS bundle this project builds —
+// which crashes immediately on startup (ERR_REQUIRE_ESM) the moment a fresh
+// `npm install` happens to pull a newer archiver. Every usage below goes
+// through `await import("archiver")` instead, which works with both CJS and
+// ESM-only packages regardless of which one npm happens to install.
+// extract-zip is also dynamically imported at each call site below, for the
+// same reason archiver is above — defensive against a future ESM-only
+// release breaking the CJS build the same way.
 
 /**
  * Returns true only if `target` is exactly `base` or a genuine descendant of it.
@@ -777,7 +785,8 @@ export const zipFiles = async (req: Request, res: Response) => {
 
   try {
     const output = fs.createWriteStream(outZipPath);
-    const archive = new ZipArchive({ zlib: { level: 9 } });
+    const archiver = (await import("archiver")).default;
+    const archive = archiver("zip", { zlib: { level: 9 } });
 
     output.on("close", () => {
       res.json({ success: true, filename: outputName || "archive.zip" });
@@ -838,6 +847,7 @@ export const unzipFile = async (req: Request, res: Response) => {
 
   try {
     const destDir = path.dirname(targetPath);
+    const extract = (await import("extract-zip")).default;
     await extract(targetPath, { dir: destDir });
     res.json({ success: true });
   } catch (e: any) {
@@ -905,7 +915,8 @@ export const createBackup = async (req: Request, res: Response) => {
     }
 
     const output = fs.createWriteStream(backupPath);
-    const archive = new ZipArchive({ zlib: { level: 9 } });
+    const archiver = (await import("archiver")).default;
+    const archive = archiver("zip", { zlib: { level: 9 } });
 
     output.on("close", async () => {
       if (!res.headersSent) {
@@ -1303,6 +1314,7 @@ export const installWorld = async (req: Request, res: Response) => {
     const stagingDir = path.join(process.cwd(), ".data", "temp", `world-staging-${uuidv4()}`);
     await fs.ensureDir(stagingDir);
     try {
+      const extract = (await import("extract-zip")).default;
       await extract(zipPath, { dir: stagingDir });
     } catch (extractErr: any) {
       await fs.remove(stagingDir).catch(() => {});

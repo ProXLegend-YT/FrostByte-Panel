@@ -1186,3 +1186,199 @@ export const installMod = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Mod installation failed: " + error.message });
   }
 };
+
+// --- World installer -------------------------------------------------------
+// There's no clean, no-auth, CORS-friendly marketplace API for full
+// Minecraft worlds the way Modrinth serves mods/plugins — everything real
+// out there is scraped wikis or paid listings, which isn't something to
+// wire a "one-click install" against. So this delivers the part that's
+// actually valuable and honest: safe, one-click *installation* of a world
+// the admin/user already has (uploaded, or a direct URL they trust) —
+// handling extraction, level-name detection/sync, and an automatic backup
+// of whatever world is being replaced, which is the tedious/risky part
+// people actually get stuck on.
+
+function readServerProperties(propsPath: string): Record<string, string> {
+  const props: Record<string, string> = {};
+  if (!fs.existsSync(propsPath)) return props;
+  const raw = fs.readFileSync(propsPath, "utf8");
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const idx = trimmed.indexOf("=");
+    if (idx === -1) continue;
+    props[trimmed.slice(0, idx)] = trimmed.slice(idx + 1);
+  }
+  return props;
+}
+
+function writeServerPropertiesKey(propsPath: string, key: string, value: string) {
+  let raw = fs.existsSync(propsPath) ? fs.readFileSync(propsPath, "utf8") : "";
+  const lines = raw.split("\n");
+  let found = false;
+  const nextLines = lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(`${key}=`)) {
+      found = true;
+      return `${key}=${value}`;
+    }
+    return line;
+  });
+  if (!found) nextLines.push(`${key}=${value}`);
+  fs.writeFileSync(propsPath, nextLines.join("\n"));
+}
+
+// A zip can either have level.dat at its root, or wrap the whole world in a
+// single subfolder (the common case when someone just zips their saves
+// folder). This finds the real world root inside the extracted staging dir
+// so we install the right thing either way.
+function findWorldRoot(stagingDir: string): string | null {
+  if (fs.existsSync(path.join(stagingDir, "level.dat"))) return stagingDir;
+  const entries = fs.readdirSync(stagingDir, { withFileTypes: true }).filter((e) => e.isDirectory());
+  for (const entry of entries) {
+    const candidate = path.join(stagingDir, entry.name);
+    if (fs.existsSync(path.join(candidate, "level.dat"))) return candidate;
+  }
+  return null;
+}
+
+export const installWorld = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  const { sourceUrl, worldName } = req.body;
+
+  const serverDir = path.join(process.cwd(), ".data", "servers", id);
+  if (!fs.existsSync(serverDir)) {
+    if (req.file) await fs.remove(req.file.path).catch(() => {});
+    return res.status(404).json({ error: "Server not found" });
+  }
+
+  // Swapping world files under a running server risks corrupting the save
+  // (the server process has the region files open and periodically writes
+  // to them) — require it to be stopped first, same as changeServerVersion.
+  const servers = await readJSON("servers.json") || [];
+  const server = servers.find((s: any) => s.id === id);
+  if (server?.containerId) {
+    const status = await getContainerStatus(server.containerId);
+    if (status?.State?.Running) {
+      if (req.file) await fs.remove(req.file.path).catch(() => {});
+      return res.status(409).json({ error: "Stop the server before installing a new world." });
+    }
+  }
+
+  let zipPath: string | null = null;
+  let cleanupZip = false;
+  try {
+    if (req.file) {
+      zipPath = req.file.path;
+      cleanupZip = true;
+    } else if (sourceUrl) {
+      let parsed: URL;
+      try {
+        parsed = new URL(sourceUrl);
+      } catch {
+        return res.status(400).json({ error: "Invalid source URL." });
+      }
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        return res.status(400).json({ error: "Source URL must be http or https." });
+      }
+      const axios = (await import("axios")).default;
+      const tempDir = path.join(process.cwd(), ".data", "temp");
+      await fs.ensureDir(tempDir);
+      zipPath = path.join(tempDir, `world-${uuidv4()}.zip`);
+      cleanupZip = true;
+      const response = await axios({ url: sourceUrl, method: "GET", responseType: "stream", headers: { "User-Agent": "FrostByte-Panel/1.0" }, maxRedirects: 5 });
+      const writer = fs.createWriteStream(zipPath);
+      response.data.pipe(writer);
+      await new Promise<void>((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
+      });
+    } else {
+      return res.status(400).json({ error: "Provide either a world zip file or a sourceUrl." });
+    }
+
+    // Extract into a staging directory first — never straight into the live
+    // world — so a corrupt/partial zip can't leave the server half-broken.
+    const stagingDir = path.join(process.cwd(), ".data", "temp", `world-staging-${uuidv4()}`);
+    await fs.ensureDir(stagingDir);
+    try {
+      await extract(zipPath, { dir: stagingDir });
+    } catch (extractErr: any) {
+      await fs.remove(stagingDir).catch(() => {});
+      return res.status(400).json({ error: "Could not extract the file — is it a valid zip?" });
+    }
+
+    const worldRoot = findWorldRoot(stagingDir);
+    if (!worldRoot) {
+      await fs.remove(stagingDir).catch(() => {});
+      return res.status(400).json({ error: "This doesn't look like a Minecraft world — no level.dat found in the zip." });
+    }
+
+    const propsPath = path.join(serverDir, "server.properties");
+    const currentProps = readServerProperties(propsPath);
+    const levelName = (worldName || currentProps["level-name"] || "world").replace(/[^a-zA-Z0-9_\-]/g, "_") || "world";
+    const targetWorldDir = path.join(serverDir, levelName);
+
+    if (!isWithinBase(targetWorldDir, serverDir)) {
+      await fs.remove(stagingDir).catch(() => {});
+      return res.status(400).json({ error: "Invalid world name." });
+    }
+
+    // Auto-backup whatever world is already there before replacing it —
+    // this is the actual safety net that makes a one-click install
+    // reasonable. Skipped only if there's nothing there yet.
+    let backupNote = "";
+    if (fs.existsSync(targetWorldDir)) {
+      const backupsDir = path.join(serverDir, "backups");
+      await fs.ensureDir(backupsDir);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const backupName = `pre-world-install-${levelName}-${timestamp}.zip`;
+      const backupPath = path.join(backupsDir, backupName);
+      const archiver = (await import("archiver")).default;
+      await new Promise<void>((resolve, reject) => {
+        const output = fs.createWriteStream(backupPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        output.on("close", () => resolve());
+        archive.on("error", reject);
+        archive.pipe(output);
+        archive.directory(targetWorldDir, false);
+        archive.finalize();
+      });
+      await fs.remove(targetWorldDir);
+      backupNote = ` Your previous world was backed up as ${backupName} before replacing it.`;
+    }
+
+    await fs.move(worldRoot, targetWorldDir, { overwrite: true });
+    await fs.remove(stagingDir).catch(() => {});
+
+    // Keep server.properties in sync so the server actually loads the
+    // world we just installed, rather than looking for whatever level-name
+    // was set before.
+    if (currentProps["level-name"] !== levelName) {
+      writeServerPropertiesKey(propsPath, "level-name", levelName);
+    }
+
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "world.install", target: levelName, serverId: id });
+
+    try {
+      const { notifyUser } = await import("../services/notifications.js");
+      await notifyUser(user.id, {
+        type: "success",
+        title: "World installed",
+        message: `${levelName} is ready.${backupNote}`,
+        serverId: id,
+        link: `/servers/${id}/files`,
+      });
+    } catch { /* notification is best-effort — install already succeeded */ }
+
+    res.json({ success: true, worldName: levelName, message: `World installed successfully.${backupNote}` });
+  } catch (error: any) {
+    console.error("World installation failed:", error.message);
+    res.status(500).json({ error: "World installation failed: " + error.message });
+  } finally {
+    if (cleanupZip && zipPath) {
+      await fs.remove(zipPath).catch(() => {});
+    }
+  }
+};

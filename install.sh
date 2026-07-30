@@ -89,6 +89,22 @@ install_node_from_tarball() {
   $SUDO tar -xJf "$tmp_tarball" -C /usr/local/lib/nodejs
   local extracted_dir
   extracted_dir="$(find /usr/local/lib/nodejs -maxdepth 1 -type d -name "node-${node_version}-linux-${node_arch}" | head -1)"
+
+  # Symlinking just node/npm/npx individually misses the actual failure
+  # mode: any package installed later with `npm install -g` (like pm2) puts
+  # its binary in this same directory, and if only the three well-known
+  # binaries are symlinked, that new binary silently isn't on PATH — which
+  # is exactly what caused "pm2: command not found" after an otherwise
+  # successful install. Exporting the whole bin dir fixes every future
+  # global install, not just the ones we anticipated.
+  export PATH="${extracted_dir}/bin:$PATH"
+  for profile in "$HOME/.bashrc" "$HOME/.profile" "$HOME/.zshrc"; do
+    if [[ -f "$profile" ]] && ! grep -q "${extracted_dir}/bin" "$profile" 2>/dev/null; then
+      echo "export PATH=\"${extracted_dir}/bin:\$PATH\"" >> "$profile"
+    fi
+  done
+  # Also symlink into /usr/local/bin for good measure, so `sudo` calls (which
+  # often reset PATH) can still find these without needing our export above.
   $SUDO ln -sf "${extracted_dir}/bin/node" /usr/local/bin/node
   $SUDO ln -sf "${extracted_dir}/bin/npm" /usr/local/bin/npm
   $SUDO ln -sf "${extracted_dir}/bin/npx" /usr/local/bin/npx
@@ -473,12 +489,52 @@ do_install() {
   " || { fail "Failed to create admin account."; pause; return; }
   unset ADMIN_PASS ADMIN_PASS_CONFIRM
 
-  log "Starting FrostByte Panel with PM2..."
-  pm2 start ecosystem.config.cjs
-  pm2 save >/dev/null 2>&1 || true
+  log "Starting FrostByte Panel..."
+
+  # Don't trust that PM2 is on PATH just because the earlier install step
+  # ran — `npm install -g pm2` can silently produce a binary that isn't
+  # reachable (this is exactly what caused the "pm2: command not found"
+  # failure after an otherwise successful install). Verify it actually
+  # works, try to fix it once, and fall back to a plain background node
+  # process rather than silently doing nothing.
+  PM2_WORKS=false
+  if command_exists pm2 && pm2 --version >/dev/null 2>&1; then
+    PM2_WORKS=true
+  else
+    warn "pm2 isn't working — reinstalling it..."
+    npm install -g pm2 >/dev/null 2>&1 || $SUDO npm install -g pm2 >/dev/null 2>&1
+    hash -r
+    if command_exists pm2 && pm2 --version >/dev/null 2>&1; then
+      PM2_WORKS=true
+    fi
+  fi
 
   PORT_VALUE=$(grep -E '^PORT=' .env | cut -d= -f2)
   PORT_VALUE="${PORT_VALUE:-3000}"
+
+  if $PM2_WORKS; then
+    pm2 start ecosystem.config.cjs
+    pm2 save >/dev/null 2>&1 || true
+  else
+    warn "PM2 still isn't available — starting the panel directly instead."
+    warn "It won't auto-restart on crash/reboot without PM2. You can install PM2 later and run 'pm2 start ecosystem.config.cjs' from the ${DIR_NAME} folder."
+    mkdir -p logs
+    NODE_ENV=production PORT="$PORT_VALUE" nohup npm run start > logs/frostbyte-direct.log 2>&1 &
+    disown
+  fi
+
+  # Confirm something is actually listening before claiming success — this
+  # is what would have caught the pm2 failure instead of printing "running"
+  # over a process that never started.
+  log "Waiting for the panel to come up on port ${PORT_VALUE}..."
+  PANEL_UP=false
+  for i in $(seq 1 15); do
+    if curl -fsS "http://127.0.0.1:${PORT_VALUE}" >/dev/null 2>&1; then
+      PANEL_UP=true
+      break
+    fi
+    sleep 1
+  done
 
   if [[ "$USE_REVERSE_PROXY" == "true" ]] && [[ -n "${PANEL_DOMAIN:-}" ]]; then
     setup_reverse_proxy "$PANEL_DOMAIN" "$PORT_VALUE"
@@ -489,9 +545,20 @@ do_install() {
   fi
 
   echo
-  echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
-  echo -e "${GREEN} FrostByte Panel is installed and running!${NC}"
-  echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
+  if $PANEL_UP; then
+    echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN} FrostByte Panel is installed and running!${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
+  else
+    echo -e "${YELLOW}════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW} Install finished, but the panel isn't responding yet.${NC}"
+    echo -e "${YELLOW}════════════════════════════════════════════════════════${NC}"
+    if $PM2_WORKS; then
+      echo -e "  Check logs with: ${CYAN}pm2 logs frostbyte-panel${NC}"
+    else
+      echo -e "  Check logs with: ${CYAN}cat ${DIR_NAME}/logs/frostbyte-direct.log${NC}"
+    fi
+  fi
   if [[ -n "$PANEL_DOMAIN" ]]; then
     echo -e "  URL:      ${CYAN}${ORIGIN}${NC}"
   else

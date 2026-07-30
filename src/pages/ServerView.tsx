@@ -12,10 +12,11 @@ import ServerProperties from "../components/ServerProperties";
 import ServerBackups from "../components/ServerBackups";
 import PluginManager from "../components/PluginManager";
 import ModManager from "../components/ModManager";
+import WorldManager from "../components/WorldManager";
 import SubUsersManager from "../components/SubUsersManager";
 import ServerSFTP from "../components/ServerSFTP";
 import { NotificationBell } from "../components/NotificationBell";
-import { Puzzle, Box, Network } from "lucide-react";
+import { Puzzle, Box, Network, Globe2 } from "lucide-react";
 import { Settings } from "lucide-react";
 
 
@@ -101,6 +102,12 @@ export default function ServerView() {
 
   if (server?.type === "FORGE" || server?.type === "FABRIC") {
     tabs.push({ name: "Mods", path: `/servers/${id}/mods`, exactPath: "mods", icon: <Box size={18} /> });
+  }
+
+  // World installs make sense for any non-proxy Minecraft-family server,
+  // not just modded ones — vanilla/Paper servers have worlds too.
+  if (!isProxy && ["PAPER", "FORGE", "FABRIC", "VANILLA"].includes(server?.type?.toUpperCase() || "")) {
+    tabs.push({ name: "Worlds", path: `/servers/${id}/worlds`, exactPath: "worlds", icon: <Globe2 size={18} /> });
   }
 
   tabs.push(
@@ -302,6 +309,7 @@ export default function ServerView() {
              <Route path="/backup" element={<ServerBackups serverId={id!} />} />
              <Route path="/plugins" element={<PluginManager serverId={id!} />} />
              <Route path="/mods" element={<ModManager serverId={id!} />} />
+             <Route path="/worlds" element={<WorldManager serverId={id!} serverStatus={server.status} />} />
              
            </Routes>
         </div>

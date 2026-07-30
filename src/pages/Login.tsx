@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { LoadingOverlay } from "../components/LoadingOverlay";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
@@ -31,20 +31,31 @@ export default function Login() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       if (enableLoginAnimation === false) {
-        gsap.set([".frost-brand", ".frost-card"], { autoAlpha: 1, y: 0 });
+        gsap.set([".frost-brand", ".frost-card-shell"], { autoAlpha: 1, y: 0 });
         return;
       }
 
-      gsap.set([".frost-brand", ".frost-card"], { autoAlpha: 0, y: 24 });
+      gsap.set([".frost-brand", ".frost-card-shell"], { autoAlpha: 0, y: 24 });
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
       tl.to(".frost-brand", { autoAlpha: 1, y: 0, duration: 0.7 }, 0.15)
-        .to(".frost-card", { autoAlpha: 1, y: 0, duration: 0.8 }, 0.35);
+        .to(".frost-card-shell", { autoAlpha: 1, y: 0, duration: 0.8 }, 0.35);
     }, rootRef);
 
     return () => ctx.revert();
   }, [enableLoginAnimation]);
 
   const displayName = panelName || "FrostByte Panel";
+
+  const particleSeeds = useMemo(
+    () =>
+      Array.from({ length: 18 }, () => ({
+        left: Math.random() * 100,
+        duration: 14 + Math.random() * 12,
+        delay: Math.random() * 14,
+        drift: Math.random() * 60 - 30,
+      })),
+    []
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +81,23 @@ export default function Login() {
         <div className="frost-orb frost-orb-b" />
       </div>
       <div className="frost-grid" />
+
+      {/* Drifting ice motes — pure CSS, randomized per-mount for a natural feel */}
+      <div className="frost-particles" aria-hidden="true">
+        {particleSeeds.map((p, i) => (
+          <div
+            key={i}
+            className="frost-particle"
+            style={{
+              left: `${p.left}%`,
+              bottom: `-10px`,
+              animationDuration: `${p.duration}s`,
+              animationDelay: `${p.delay}s`,
+              ['--drift' as any]: `${p.drift}px`,
+            }}
+          />
+        ))}
+      </div>
 
       {/* Signature element: hexagonal ice-crystal lattice, draws itself in on load */}
       <div className="frost-crystal-wrap" aria-hidden="true">
@@ -110,7 +138,8 @@ export default function Login() {
           <p className="frost-brand-subtitle">Server Management</p>
         </div>
 
-        <div className="frost-card">
+        <div className="frost-card-shell">
+          <div className="frost-card">
           {allowRegistration !== false ? (
             <div className="frost-tabs" role="tablist" aria-label="Authentication mode">
               <button
@@ -133,9 +162,7 @@ export default function Login() {
               </button>
             </div>
           ) : (
-            <h2 style={{ textAlign: "center", fontSize: "1.1rem", fontWeight: 700, color: "#e2e8f0", marginBottom: "1.5rem" }}>
-              Sign In
-            </h2>
+            <h2 className="frost-solo-heading">Sign In</h2>
           )}
 
           <form onSubmit={handleSubmit} className="frost-form">
@@ -190,6 +217,7 @@ export default function Login() {
               )}
             </p>
           )}
+          </div>
         </div>
       </div>
 

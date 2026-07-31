@@ -28,6 +28,18 @@ function isWithinBase(target: string, base: string): boolean {
   return resolvedTarget === resolvedBase || resolvedTarget.startsWith(resolvedBase + path.sep);
 }
 
+// Same heuristic git and most editors use: if a NUL byte shows up in the
+// first chunk of the file, treat it as binary. This lets the file editor
+// safely open *any* genuinely text-based file (not just a hardcoded
+// extension whitelist) while still refusing jars, images, world data,
+// etc. — opening those as UTF-8 text can produce garbage on save and
+// silently corrupt the original binary.
+const BINARY_SNIFF_BYTES = 8192;
+function looksBinary(buffer: Buffer): boolean {
+  const sample = buffer.subarray(0, Math.min(buffer.length, BINARY_SNIFF_BYTES));
+  return sample.includes(0);
+}
+
 // Server resource limit bounds — shared between creation and later admin
 // updates so a server can never be created outside the range an admin could
 // later constrain it to anyway.
@@ -718,8 +730,15 @@ export const getFiles = async (req: Request, res: Response) => {
       return res.json([]);
     }
     if (stats.isFile()) {
-       const content = await fs.readFile(targetPath, "utf-8");
-       return res.json({ isFile: true, content });
+       const MAX_EDITABLE_SIZE = 5 * 1024 * 1024; // 5MB — generous for configs/logs, small enough to not choke a browser editor
+       if (stats.size > MAX_EDITABLE_SIZE) {
+         return res.json({ isFile: true, tooLarge: true, size: stats.size });
+       }
+       const raw = await fs.readFile(targetPath);
+       if (looksBinary(raw)) {
+         return res.json({ isFile: true, isBinary: true, size: stats.size });
+       }
+       return res.json({ isFile: true, content: raw.toString("utf-8") });
     }
     const files = await fs.readdir(targetPath, { withFileTypes: true });
     res.json(files.map(f => ({
@@ -866,6 +885,16 @@ export const saveFileContent = async (req: Request, res: Response) => {
   }
 
   try {
+    // If a file already exists at this path and looks binary, refuse to
+    // overwrite it with text content — this endpoint shouldn't rely solely
+    // on the frontend having gated access correctly upstream.
+    const existing = await fs.stat(targetPath).catch(() => null);
+    if (existing && existing.isFile()) {
+      const existingRaw = await fs.readFile(targetPath).catch(() => null);
+      if (existingRaw && looksBinary(existingRaw)) {
+        return res.status(400).json({ error: "This file appears to be binary and can't be edited as text." });
+      }
+    }
     await fs.writeFile(targetPath, content, "utf-8");
     res.json({ success: true });
   } catch (e: any) {

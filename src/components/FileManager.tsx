@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react"; 
 import { LoadingOverlay } from "../components/LoadingOverlay";
 import axios from "axios";
-import { Folder, File, ArrowLeft, Upload, Trash2, Edit2, Save, Archive, Search, X, CheckSquare, Square, Download } from "lucide-react";
+import { Folder, File, ArrowLeft, Upload, Trash2, Edit2, Save, Archive, Search, X, CheckSquare, Square, Download, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import CodeMirror from "@uiw/react-codemirror";
+import { githubDark } from "@uiw/codemirror-theme-github";
+import { languageExtensionFor } from "../utils/editorLanguages";
 
 export default function FileManager({ serverId }: { serverId: string }) {
   const [files, setFiles] = useState<any[]>([]);
@@ -41,6 +44,8 @@ export default function FileManager({ serverId }: { serverId: string }) {
   const goUp = () => {
     if (editingFile) {
       setEditingFile(null);
+      setSaveError(null);
+      setSavedFlash(false);
       return;
     }
     if (path === "/") return;
@@ -54,33 +59,44 @@ export default function FileManager({ serverId }: { serverId: string }) {
   };
 
   const openFile = async (name: string) => {
-    if (!name.match(/\.(txt|json|yml|yaml|properties|log)$/)) {
-      alert("Only text formats are supported for editing.");
-      return;
-    }
     const fullPath = path.endsWith("/") ? path + name : path + "/" + name;
+    setSaveError(null);
+    setSavedFlash(false);
     try {
       const res = await axios.get(`/api/servers/${serverId}/files?path=${encodeURIComponent(fullPath)}`);
-      if (res.data.isFile) {
-         setEditingFile(name);
-         setFileContent(res.data.content);
+      if (!res.data.isFile) return;
+      if (res.data.isBinary) {
+        alert("This file looks like a binary file (e.g. a jar, image, or archive) and can't be edited as text. Use download/upload instead.");
+        return;
       }
+      if (res.data.tooLarge) {
+        const mb = (res.data.size / (1024 * 1024)).toFixed(1);
+        alert(`This file is ${mb}MB, too large to edit in the browser. Download it instead.`);
+        return;
+      }
+      setEditingFile(name);
+      setFileContent(res.data.content);
     } catch (e) {
       alert("Failed to load file");
     }
   };
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
+
   const saveFile = async () => {
     setIsSaving(true);
+    setSaveError(null);
     try {
       const fullPath = path.endsWith("/") ? path + editingFile : path + "/" + editingFile;
       await axios.post(`/api/servers/${serverId}/files/save`, {
         filePath: fullPath,
         content: fileContent
       });
-      console.log("File saved!");
-    } catch(e) {
-      console.error("Failed to save file.", e);
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 2000);
+    } catch(e: any) {
+      setSaveError(e.response?.data?.error || "Failed to save file.");
     } finally {
       setIsSaving(false);
     }
@@ -255,8 +271,8 @@ export default function FileManager({ serverId }: { serverId: string }) {
                 )}
               </div>
             ) : (
-              <button disabled={isSaving} onClick={saveFile} className="flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors disabled:opacity-50">
-                {isSaving ? <div className="w-4 h-4 rounded-full border-2 border-white/50 border-t-white animate-spin"></div> : <Save size={16} />}
+              <button disabled={isSaving} onClick={saveFile} className="relative flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors disabled:opacity-50">
+                {isSaving ? <div className="w-4 h-4 rounded-full border-2 border-white/50 border-t-white animate-spin"></div> : savedFlash ? <CheckCircle2 size={16} className="text-emerald-300" /> : <Save size={16} />}
               </button>
             )}
           </div>
@@ -297,8 +313,8 @@ export default function FileManager({ serverId }: { serverId: string }) {
           </div>
         ) : (
           <button disabled={isSaving} onClick={saveFile} className="hidden sm:flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-full text-sm font-medium text-white transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50">
-            {isSaving ? <div className="w-4 h-4 rounded-full border-2 border-white/50 border-t-white animate-spin"></div> : <Save size={16} />}
-            <span>{isSaving ? "Saving..." : "Save"}</span>
+            {isSaving ? <div className="w-4 h-4 rounded-full border-2 border-white/50 border-t-white animate-spin"></div> : savedFlash ? <CheckCircle2 size={16} className="text-emerald-300" /> : <Save size={16} />}
+            <span>{isSaving ? "Saving..." : savedFlash ? "Saved" : "Save"}</span>
           </button>
         )}
       </div>
@@ -311,12 +327,31 @@ export default function FileManager({ serverId }: { serverId: string }) {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <textarea 
-                value={fileContent} 
-                onChange={(e) => setFileContent(e.target.value)}
-                className="flex-1 w-full h-full bg-gray-950/60 border border-gray-700/50 rounded-xl p-4 text-gray-200 font-mono text-sm focus:outline-none focus:border-blue-500/50 resize-none custom-scrollbar min-h-0 shadow-inner"
-                spellCheck={false}
-              />
+              {saveError && (
+                <div className="mb-2 px-3 py-2 bg-red-500/10 border border-red-500/25 rounded-lg text-sm text-red-300 flex items-start gap-2 shrink-0">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {saveError}
+                </div>
+              )}
+              <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-gray-700/50 shadow-inner">
+                <CodeMirror
+                  value={fileContent}
+                  onChange={(val) => setFileContent(val)}
+                  theme={githubDark}
+                  extensions={editingFile ? languageExtensionFor(editingFile) : []}
+                  height="100%"
+                  className="h-full text-sm"
+                  basicSetup={{
+                    lineNumbers: true,
+                    foldGutter: true,
+                    highlightActiveLine: true,
+                    highlightActiveLineGutter: true,
+                    autocompletion: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    searchKeymap: true,
+                  }}
+                />
+              </div>
             </motion.div>
           ) : (
             <motion.div 

@@ -279,10 +279,38 @@ install_cloudflared() {
   local cf_arch="amd64"
   [[ "$arch" == "aarch64" || "$arch" == "arm64" ]] && cf_arch="arm64"
 
-  curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf_arch}" -o /tmp/cloudflared \
-    && chmod +x /tmp/cloudflared \
-    && $SUDO mv /tmp/cloudflared /usr/local/bin/cloudflared
-  command_exists cloudflared
+  local dl_url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf_arch}"
+  if ! curl -fsSL "$dl_url" -o /tmp/cloudflared; then
+    fail "Failed to download cloudflared from ${dl_url}."
+    fail "This can happen if outbound access to github.com is blocked or rate-limited in this environment (common on some cloud devboxes)."
+    return 1
+  fi
+  chmod +x /tmp/cloudflared
+
+  # Prefer a location we know is writable and already on PATH, rather than
+  # assuming /usr/local/bin is writable even with $SUDO — some containers
+  # (including some cloud devbox images) mount it read-only or don't have
+  # sudo configured the way this script expects.
+  local install_dir="/usr/local/bin"
+  if ! $SUDO mv /tmp/cloudflared "${install_dir}/cloudflared" 2>/dev/null; then
+    install_dir="$HOME/.local/bin"
+    mkdir -p "$install_dir"
+    if ! mv /tmp/cloudflared "${install_dir}/cloudflared"; then
+      fail "Couldn't install cloudflared to either /usr/local/bin or ${install_dir} — check filesystem permissions."
+      return 1
+    fi
+    export PATH="${install_dir}:$PATH"
+    if [[ -f "$HOME/.bashrc" ]] && ! grep -q "${install_dir}" "$HOME/.bashrc" 2>/dev/null; then
+      echo "export PATH=\"${install_dir}:\$PATH\"" >> "$HOME/.bashrc"
+    fi
+    warn "Installed cloudflared to ${install_dir} instead of /usr/local/bin (which wasn't writable here) and added it to PATH."
+  fi
+
+  if ! command_exists cloudflared; then
+    fail "cloudflared was downloaded but isn't runnable — check that ${install_dir}/cloudflared has execute permissions."
+    return 1
+  fi
+  return 0
 }
 
 setup_cloudflare_tunnel() {
@@ -370,17 +398,49 @@ setup_cloudflare_tunnel_token() {
   echo -e "${G}Make sure this tunnel's Public Hostname route in the dashboard points to: http://localhost:${backend_port}${NC}"
   read -r -p "$(echo -e "${W}Press Enter once that's confirmed (or already set up)...${NC}")" _
 
+  local cloudflared_path
+  cloudflared_path=$(command -v cloudflared)
+
   if command_exists pm2; then
     pm2 delete frostbyte-tunnel > /dev/null 2>&1 || true
-    pm2 start cloudflared --name frostbyte-tunnel -- tunnel run --token "$CF_TUNNEL_TOKEN" > /dev/null 2>&1
+    # Use the resolved binary path, not the bare command name — PM2's
+    # `start <name>` expects a script/binary path, and a bare name can
+    # silently fail to resolve correctly depending on PM2's own PATH
+    # handling, which is exactly the kind of thing that looks like it
+    # worked but never actually launched anything.
+    pm2 start "$cloudflared_path" --name frostbyte-tunnel -- tunnel run --token "$CF_TUNNEL_TOKEN" > /dev/null 2>&1
     pm2 save > /dev/null 2>&1 || true
-    ok "Tunnel running under PM2 as 'frostbyte-tunnel'. It should come up within a few seconds — check its status at your configured hostname."
+
+    sleep 3
+    local tunnel_status
+    tunnel_status=$(pm2 jlist 2>/dev/null | node -e "
+      let data = '';
+      process.stdin.on('data', d => data += d);
+      process.stdin.on('end', () => {
+        try {
+          const list = JSON.parse(data);
+          const proc = list.find(p => p.name === 'frostbyte-tunnel');
+          console.log(proc ? proc.pm2_env.status : 'not_found');
+        } catch { console.log('not_found'); }
+      });
+    " 2>/dev/null)
+    if [[ "$tunnel_status" == "online" ]]; then
+      ok "Tunnel running under PM2 as 'frostbyte-tunnel'."
+    else
+      fail "Tunnel process isn't staying online (status: ${tunnel_status:-unknown}). Check the reason with: pm2 logs frostbyte-tunnel"
+      warn "Common causes: an invalid/expired token, or the tunnel was deleted in the Zero Trust dashboard."
+    fi
   else
     warn "PM2 not available to keep the tunnel running persistently."
     warn "Start it manually with: cloudflared tunnel run --token <token>"
-    nohup cloudflared tunnel run --token "$CF_TUNNEL_TOKEN" > "$HOME/.cloudflared-token.log" 2>&1 &
-    disown
-    ok "Tunnel started in the background (PID $!). Logs: $HOME/.cloudflared-token.log"
+    nohup "$cloudflared_path" tunnel run --token "$CF_TUNNEL_TOKEN" > "$HOME/.cloudflared-token.log" 2>&1 &
+    local tunnel_pid=$!
+    sleep 3
+    if kill -0 "$tunnel_pid" 2>/dev/null; then
+      ok "Tunnel started in the background (PID ${tunnel_pid}). Logs: $HOME/.cloudflared-token.log"
+    else
+      fail "Tunnel process exited immediately — check $HOME/.cloudflared-token.log for the reason (often an invalid or expired token)."
+    fi
   fi
 }
 

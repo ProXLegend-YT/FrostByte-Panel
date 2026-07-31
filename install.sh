@@ -337,6 +337,53 @@ EOF
   fi
 }
 
+# --- Step: run an existing Cloudflare Tunnel from a pasted token ------------
+# `cloudflared tunnel login` opens an interactive browser OAuth flow, which
+# is awkward or outright impossible on Termux and cloud devboxes like
+# CodeSandbox (no local browser, restricted networking, no persistent
+# storage across sessions). Cloudflare Zero Trust lets you create a tunnel
+# in the dashboard once and get back a long-lived *token* — running
+# `cloudflared tunnel run --token <token>` needs no login step at all, which
+# is the actual friction-free path for these environments.
+setup_cloudflare_tunnel_token() {
+  local backend_port="$1"
+
+  install_cloudflared || { warn "Skipping tunnel setup — cloudflared installation failed."; return; }
+
+  echo
+  echo -e "${G}Get this from the Cloudflare Zero Trust dashboard:${NC}"
+  echo -e "${G}Networks → Tunnels → create/select a tunnel → 'Install and run a connector' → copy the token after --token.${NC}"
+  echo -e "${G}(It's a long string, not just the tunnel ID/UUID.)${NC}"
+  echo
+  read -r -p "$(echo -e "${W}Paste your Cloudflare Tunnel token: ${NC}")" CF_TUNNEL_TOKEN
+
+  if [[ -z "$CF_TUNNEL_TOKEN" ]]; then
+    warn "No token entered — skipping tunnel setup. You can re-run this later from the panel management menu."
+    return
+  fi
+
+  # Also make sure this tunnel's public-hostname route (configured in the
+  # Zero Trust dashboard, not here) actually points at the right local
+  # service — that part has to be set up in the dashboard UI since a token
+  # run doesn't manage ingress rules locally the way a named-tunnel config
+  # file does. Remind the user rather than silently assuming it's correct.
+  echo -e "${G}Make sure this tunnel's Public Hostname route in the dashboard points to: http://localhost:${backend_port}${NC}"
+  read -r -p "$(echo -e "${W}Press Enter once that's confirmed (or already set up)...${NC}")" _
+
+  if command_exists pm2; then
+    pm2 delete frostbyte-tunnel > /dev/null 2>&1 || true
+    pm2 start cloudflared --name frostbyte-tunnel -- tunnel run --token "$CF_TUNNEL_TOKEN" > /dev/null 2>&1
+    pm2 save > /dev/null 2>&1 || true
+    ok "Tunnel running under PM2 as 'frostbyte-tunnel'. It should come up within a few seconds — check its status at your configured hostname."
+  else
+    warn "PM2 not available to keep the tunnel running persistently."
+    warn "Start it manually with: cloudflared tunnel run --token <token>"
+    nohup cloudflared tunnel run --token "$CF_TUNNEL_TOKEN" > "$HOME/.cloudflared-token.log" 2>&1 &
+    disown
+    ok "Tunnel started in the background (PID $!). Logs: $HOME/.cloudflared-token.log"
+  fi
+}
+
 # --- Step: install the panel -------------------------------------------------
 do_install() {
   banner
@@ -382,12 +429,14 @@ do_install() {
   echo -e "${G}How will people reach this panel?${NC}"
   echo -e " ${W}[1]${NC} I have a domain pointed at this server — set up HTTPS automatically (nginx + Let's Encrypt)"
   echo -e " ${W}[2]${NC} Cloudflare (standard proxy, DNS points at this server's IP)"
-  echo -e " ${W}[3]${NC} Cloudflare Tunnel (no public IP or open ports needed — good for home networks/phones)"
+  echo -e " ${W}[3]${NC} Cloudflare Tunnel — log in and create a new tunnel (needs a browser to authorize)"
   echo -e " ${W}[4]${NC} Just use this server's IP address for now (plain HTTP, no domain)"
-  read -r -p "$(echo -e "${W}Choose an option [1-4]: ${NC}")" DOMAIN_CHOICE
+  echo -e " ${W}[5]${NC} Cloudflare Tunnel — paste an existing tunnel token from Zero Trust (no browser login needed; best for Termux/CodeSandbox)"
+  read -r -p "$(echo -e "${W}Choose an option [1-5]: ${NC}")" DOMAIN_CHOICE
 
   USE_REVERSE_PROXY=false
   USE_CF_TUNNEL=false
+  USE_CF_TUNNEL_TOKEN=false
   case "$DOMAIN_CHOICE" in
     1)
       read -r -p "$(echo -e "${W}Domain (e.g. panel.example.com): ${NC}")" PANEL_DOMAIN
@@ -402,7 +451,7 @@ do_install() {
         ORIGIN="https://${PANEL_DOMAIN}"
       fi
       warn "Set Cloudflare's SSL/TLS mode to 'Full' or 'Full (strict)' — 'Flexible' will break login sessions."
-      warn "Point an A record at this server's IP, then either put nginx in front yourself or use option 3 (Cloudflare Tunnel) instead."
+      warn "Point an A record at this server's IP, then either put nginx in front yourself or use option 3/5 (Cloudflare Tunnel) instead."
       ;;
     3)
       read -r -p "$(echo -e "${W}Domain to use for the tunnel (e.g. panel.example.com): ${NC}")" PANEL_DOMAIN
@@ -410,6 +459,13 @@ do_install() {
         ORIGIN="https://${PANEL_DOMAIN}"
         USE_CF_TUNNEL=true
       fi
+      ;;
+    5)
+      read -r -p "$(echo -e "${W}Hostname this tunnel is routed to in Zero Trust (e.g. panel.example.com) — used for ALLOWED_ORIGINS only, leave blank to skip: ${NC}")" PANEL_DOMAIN
+      if [[ -n "$PANEL_DOMAIN" ]]; then
+        ORIGIN="https://${PANEL_DOMAIN}"
+      fi
+      USE_CF_TUNNEL_TOKEN=true
       ;;
     *)
       PANEL_DOMAIN=""
@@ -419,11 +475,25 @@ do_install() {
       # which is exactly the trap this branch used to fall into.
       if $IS_TERMUX; then
         DETECTED_HOST="localhost"
+        ORIGIN="http://${DETECTED_HOST}:3000"
+      elif $IS_CLOUD_DEVBOX; then
+        # A raw curl'd public IP is meaningless here — CodeSandbox and
+        # similar devboxes proxy the actual port through a generated
+        # *.csb.app preview URL instead, which isn't knowable from inside
+        # the container. ALLOWED_ORIGINS is a literal comma-separated
+        # allowlist (not wildcard syntax) — server.ts only relaxes CORS
+        # when it's completely empty and NODE_ENV isn't "production", so
+        # leave it blank here rather than writing something that would
+        # silently never match anything.
+        ORIGIN=""
+        warn "Running in a cloud devbox (CodeSandbox or similar) — leaving ALLOWED_ORIGINS unset since the real preview URL isn't known from inside the container."
+        warn "Open the panel via the devbox's own Ports/Preview panel (not a raw IP). If you later run in production mode, set ALLOWED_ORIGINS in .env to the exact *.csb.app preview URL, then restart."
+        warn "For a stable, public URL instead of a devbox preview, use the token-based Cloudflare Tunnel option (5) next time."
       else
         DETECTED_HOST=$(curl -4 -s --max-time 5 ifconfig.me || hostname -I 2>/dev/null | awk '{print $1}')
+        DETECTED_HOST="${DETECTED_HOST:-localhost}"
+        ORIGIN="http://${DETECTED_HOST}:3000"
       fi
-      DETECTED_HOST="${DETECTED_HOST:-localhost}"
-      ORIGIN="http://${DETECTED_HOST}:3000"
       ;;
   esac
 
@@ -437,7 +507,11 @@ do_install() {
   # correctly at runtime for PM2, independent of this file.
 
   sed -i.bak "s#^ALLOWED_ORIGINS=.*#ALLOWED_ORIGINS=${ORIGIN}#" .env && rm -f .env.bak
-  ok "ALLOWED_ORIGINS set to ${ORIGIN}"
+  if [[ -n "$ORIGIN" ]]; then
+    ok "ALLOWED_ORIGINS set to ${ORIGIN}"
+  else
+    ok "ALLOWED_ORIGINS left unset (see the warning above)."
+  fi
   if [[ -z "${PANEL_DOMAIN:-}" ]]; then
     warn "No domain set — if you access the panel from a different address than ${ORIGIN} (e.g. a different IP, or 'localhost' vs your LAN IP), update ALLOWED_ORIGINS in .env to match exactly, then 'pm2 restart frostbyte-panel'."
   fi
@@ -542,6 +616,10 @@ do_install() {
 
   if [[ "$USE_CF_TUNNEL" == "true" ]] && [[ -n "${PANEL_DOMAIN:-}" ]]; then
     setup_cloudflare_tunnel "$PANEL_DOMAIN" "$PORT_VALUE"
+  fi
+
+  if [[ "$USE_CF_TUNNEL_TOKEN" == "true" ]]; then
+    setup_cloudflare_tunnel_token "$PORT_VALUE"
   fi
 
   echo

@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { requireAuth, requireServerAccess } from "../middleware/auth.js";
-import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod, installWorld } from "../controllers/servers.js";
+import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod, installWorld, getScheduledTasks, createScheduledTask, updateScheduledTask, deleteScheduledTask } from "../controllers/servers.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -208,4 +208,9 @@ router.delete("/:id/sftp", requireServerAccess("files"), async (req, res) => {
 router.post("/:id/plugins/install", requireServerAccess("files"), installPlugin);
 router.post("/:id/mods/install", requireServerAccess("files"), installMod);
 router.post("/:id/worlds/install", requireServerAccess("files"), upload.single("file"), installWorld);
+
+router.get("/:id/schedule", requireServerAccess("schedule"), getScheduledTasks);
+router.post("/:id/schedule", requireServerAccess("schedule"), createScheduledTask);
+router.put("/:id/schedule/:taskId", requireServerAccess("schedule"), updateScheduledTask);
+router.delete("/:id/schedule/:taskId", requireServerAccess("schedule"), deleteScheduledTask);
 export default router;

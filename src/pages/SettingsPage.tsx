@@ -9,13 +9,12 @@ import { LoadingOverlay } from "../components/LoadingOverlay";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin } = useAuth();
-  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enableLoginAnimation, allowRegistration, allowUserServerCreation, fetchSettings } = useSettings();
+  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration, allowUserServerCreation, fetchSettings } = useSettings();
   const [users, setUsers] = useState<any[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [newPanelName, setNewPanelName] = useState(panelName);
-  const [newEnableLoginAnimation, setNewEnableLoginAnimation] = useState(enableLoginAnimation);
   const [newAllowRegistration, setNewAllowRegistration] = useState(allowRegistration);
   const [newAllowUserServerCreation, setNewAllowUserServerCreation] = useState(allowUserServerCreation);
   const [globalServerDefaults, setGlobalServerDefaults] = useState({ defaultMaxServers: 1, defaultMaxRamGb: 4, defaultMaxCpuPercent: 200, defaultMaxDiskGb: 10 });
@@ -56,10 +55,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setNewPanelName(panelName);
-    setNewEnableLoginAnimation(enableLoginAnimation);
     setNewAllowRegistration(allowRegistration);
     setNewAllowUserServerCreation(allowUserServerCreation);
-  }, [panelName, enableLoginAnimation, allowRegistration, allowUserServerCreation]);
+  }, [panelName, allowRegistration, allowUserServerCreation]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -356,28 +354,6 @@ export default function SettingsPage() {
                 Features
               </label>
               <div className="flex flex-col gap-4 mt-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div className="relative flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={newEnableLoginAnimation} 
-                      onChange={async (e) => {
-                        const val = e.target.checked;
-                        setNewEnableLoginAnimation(val);
-                        try {
-                          await axios.put("/api/system/settings", { enableLoginAnimation: val });
-                          fetchSettings();
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
-                  </div>
-                  <span className="text-sm font-medium text-zinc-300">Enable Login Screen Cinematic Animation</span>
-                </label>
-
                 <label className="flex items-center gap-3 cursor-pointer">
                   <div className="relative flex items-center">
                     <input 

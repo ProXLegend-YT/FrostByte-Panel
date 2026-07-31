@@ -13,10 +13,11 @@ import ServerBackups from "../components/ServerBackups";
 import PluginManager from "../components/PluginManager";
 import ModManager from "../components/ModManager";
 import WorldManager from "../components/WorldManager";
+import ScheduledTasks from "../components/ScheduledTasks";
 import SubUsersManager from "../components/SubUsersManager";
 import ServerSFTP from "../components/ServerSFTP";
 import { NotificationBell } from "../components/NotificationBell";
-import { Puzzle, Box, Network, Globe2 } from "lucide-react";
+import { Puzzle, Box, Network, Globe2, Clock } from "lucide-react";
 import { Settings } from "lucide-react";
 
 
@@ -112,7 +113,8 @@ export default function ServerView() {
 
   tabs.push(
     { name: "Settings", path: `/servers/${id}/settings`, exactPath: "settings", icon: <Settings size={18} /> },
-    { name: "Backup", path: `/servers/${id}/backup`, exactPath: "backup", icon: <Archive size={18} /> }
+    { name: "Backup", path: `/servers/${id}/backup`, exactPath: "backup", icon: <Archive size={18} /> },
+    { name: "Schedule", path: `/servers/${id}/schedule`, exactPath: "schedule", icon: <Clock size={18} /> }
   );
 
   const navTabs: any[] = [
@@ -310,6 +312,7 @@ export default function ServerView() {
              <Route path="/plugins" element={<PluginManager serverId={id!} />} />
              <Route path="/mods" element={<ModManager serverId={id!} />} />
              <Route path="/worlds" element={<WorldManager serverId={id!} serverStatus={server.status} />} />
+             <Route path="/schedule" element={<ScheduledTasks serverId={id!} />} />
              
            </Routes>
         </div>

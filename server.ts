@@ -132,9 +132,11 @@ import apiRoutes from "./src/server/routes/api.js";
 app.use("/api", apiRoutes);
 
 import { initSFTPServer } from "./src/server/services/sftp.js";
+import { startScheduler } from "./src/server/services/scheduler.js";
 
 async function startServer() {
   await initSFTPServer();
+  startScheduler();
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

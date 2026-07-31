@@ -1394,3 +1394,118 @@ export const installWorld = async (req: Request, res: Response) => {
     }
   }
 };
+
+// --- Scheduled tasks ---------------------------------------------------
+// Thin HTTP layer over src/server/services/scheduler.ts, which owns the
+// actual storage and the background tick loop that runs due tasks.
+
+const VALID_ACTIONS = ["restart", "backup", "command", "stop", "start"];
+
+function validateRecurrence(recurrence: any): string | null {
+  if (!recurrence || typeof recurrence !== "object") return "Missing recurrence.";
+  if (!["interval", "daily", "weekly"].includes(recurrence.frequency)) {
+    return "recurrence.frequency must be 'interval', 'daily', or 'weekly'.";
+  }
+  if (recurrence.frequency === "interval") {
+    if (typeof recurrence.intervalMinutes !== "number" || recurrence.intervalMinutes < 5 || recurrence.intervalMinutes > 10080) {
+      return "intervalMinutes must be between 5 and 10080 (one week).";
+    }
+  } else {
+    if (recurrence.hour !== undefined && (typeof recurrence.hour !== "number" || recurrence.hour < 0 || recurrence.hour > 23)) {
+      return "hour must be between 0 and 23.";
+    }
+    if (recurrence.minute !== undefined && (typeof recurrence.minute !== "number" || recurrence.minute < 0 || recurrence.minute > 59)) {
+      return "minute must be between 0 and 59.";
+    }
+    if (recurrence.frequency === "weekly" && recurrence.dayOfWeek !== undefined) {
+      if (typeof recurrence.dayOfWeek !== "number" || recurrence.dayOfWeek < 0 || recurrence.dayOfWeek > 6) {
+        return "dayOfWeek must be between 0 (Sunday) and 6 (Saturday).";
+      }
+    }
+  }
+  return null;
+}
+
+export const getScheduledTasks = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const { getTasks } = await import("../services/scheduler.js");
+    const tasks = await getTasks(id);
+    res.json(tasks);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to load scheduled tasks." });
+  }
+};
+
+export const createScheduledTask = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  const { name, action, commandText, recurrence } = req.body;
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ error: "A task name is required." });
+  }
+  if (!VALID_ACTIONS.includes(action)) {
+    return res.status(400).json({ error: `action must be one of: ${VALID_ACTIONS.join(", ")}` });
+  }
+  if (action === "command" && (!commandText || typeof commandText !== "string" || !commandText.trim())) {
+    return res.status(400).json({ error: "commandText is required for the 'command' action." });
+  }
+  const recurrenceError = validateRecurrence(recurrence);
+  if (recurrenceError) return res.status(400).json({ error: recurrenceError });
+
+  try {
+    const { createTask } = await import("../services/scheduler.js");
+    const task = await createTask({
+      serverId: id,
+      name: name.trim(),
+      action,
+      commandText: action === "command" ? commandText.trim() : undefined,
+      recurrence,
+      createdBy: user.id,
+    });
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "scheduledTask.create", target: task.name, serverId: id });
+    res.json(task);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to create scheduled task." });
+  }
+};
+
+export const updateScheduledTask = async (req: Request, res: Response) => {
+  const { id, taskId } = req.params;
+  const user = (req as any).user;
+  const { name, enabled, recurrence, commandText } = req.body;
+
+  if (recurrence !== undefined) {
+    const recurrenceError = validateRecurrence(recurrence);
+    if (recurrenceError) return res.status(400).json({ error: recurrenceError });
+  }
+
+  try {
+    const { getTasks, updateTask } = await import("../services/scheduler.js");
+    const existing = (await getTasks(id)).find((t) => t.id === taskId);
+    if (!existing) return res.status(404).json({ error: "Scheduled task not found." });
+
+    const updated = await updateTask(taskId, { name, enabled, recurrence, commandText });
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "scheduledTask.update", target: updated?.name || taskId, serverId: id });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update scheduled task." });
+  }
+};
+
+export const deleteScheduledTask = async (req: Request, res: Response) => {
+  const { id, taskId } = req.params;
+  const user = (req as any).user;
+  try {
+    const { getTasks, deleteTask } = await import("../services/scheduler.js");
+    const existing = (await getTasks(id)).find((t) => t.id === taskId);
+    if (!existing) return res.status(404).json({ error: "Scheduled task not found." });
+
+    await deleteTask(taskId);
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "scheduledTask.delete", target: existing.name, serverId: id });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to delete scheduled task." });
+  }
+};

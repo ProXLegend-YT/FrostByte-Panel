@@ -338,6 +338,14 @@ export const attachContainerSocket = async (containerId: string, serverId: strin
           await new Promise((r) => setTimeout(r, 1500));
           const info = await container.inspect();
           if (info.State && !info.State.Running && info.State.ExitCode !== 0) {
+            // Surface this in the console itself, not just as a toast —
+            // someone actively watching the console when a crash happens
+            // should see a clear reason, not just the stream going quiet.
+            io.to(`server_${serverId}`).emit(
+              "log",
+              `[System Error] Container exited unexpectedly with code ${info.State.ExitCode}.\r\n`
+            );
+
             const { updateJSON, readJSON } = await import("./db.js");
             let crashedServer: any = null;
             await updateJSON("servers.json", (current: any[]) => {

@@ -13,7 +13,10 @@ export type ActivityAction =
   | "subuser.add" | "subuser.remove"
   | "sftp.create" | "sftp.reset"
   | "user.create" | "user.delete" | "user.password_reset"
-  | "settings.update";
+  | "settings.update"
+  | "scheduledTask.create" | "scheduledTask.update" | "scheduledTask.delete"
+  | "scheduledTask.restart" | "scheduledTask.backup" | "scheduledTask.command"
+  | "scheduledTask.stop" | "scheduledTask.start";
 
 export interface ActivityEntry {
   id: string;

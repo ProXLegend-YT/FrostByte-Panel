@@ -34,7 +34,7 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(40px);
-  opacity: 0.28;
+  opacity: 0.45;
   will-change: transform;
 }
 
@@ -110,10 +110,10 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -55%);
-  width: min(70vw, 640px);
-  height: min(70vw, 640px);
+  width: min(95vw, 820px);
+  height: min(95vw, 820px);
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.85;
 }
 
 .frost-crystal-wrap svg {
@@ -235,9 +235,14 @@
 
 .frost-card {
   position: relative;
-  background: linear-gradient(135deg, rgba(15,23,42,0.22) 0%, rgba(10,14,24,0.16) 100%);
-  backdrop-filter: blur(22px) saturate(1.4);
-  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  /* Much lower fill than before — this is the actual "can I see the
+     background through it" test, and the previous 16-22% navy fill was
+     still reading as a solid dark card against a plain black backdrop.
+     Lower blur too, since heavy blur was smearing whatever little light
+     came through into an even flatter wash. */
+  background: linear-gradient(135deg, rgba(15,23,42,0.10) 0%, rgba(10,14,24,0.06) 100%);
+  backdrop-filter: blur(14px) saturate(1.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
   padding: 2.5rem;
   border-radius: 23px;
   overflow: hidden;
@@ -249,7 +254,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, transparent 35%);
+  background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, transparent 35%);
   pointer-events: none;
 }
 

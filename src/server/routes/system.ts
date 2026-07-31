@@ -384,7 +384,7 @@ router.put("/settings", async (req, res) => {
   const user = (req as any).user;
   if(user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden"});
   const {
-    panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, enableLoginAnimation, allowRegistration,
+    panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration,
     allowUserServerCreation, defaultMaxServers, defaultMaxRamGb, defaultMaxCpuPercent, defaultMaxDiskGb,
   } = req.body;
   const settings = await readJSON("settings.json") || {};
@@ -392,7 +392,6 @@ router.put("/settings", async (req, res) => {
   if (panelLogo !== undefined) settings.panelLogo = panelLogo;
   if (panelBackgroundImage !== undefined) settings.panelBackgroundImage = panelBackgroundImage;
   if (panelBackgroundBlur !== undefined) settings.panelBackgroundBlur = panelBackgroundBlur;
-  if (enableLoginAnimation !== undefined) settings.enableLoginAnimation = enableLoginAnimation;
   if (allowRegistration !== undefined) settings.allowRegistration = allowRegistration;
 
   // Panel-wide default for whether normal users can create servers, plus the

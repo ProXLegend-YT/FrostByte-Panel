@@ -174,8 +174,12 @@ const stripAnsi = (s: string) => s.replace(ANSI_RE, "");
 
 const levelOf = (raw: string): LogLevel => {
   const l = stripAnsi(raw);
-  if (/ERROR|Exception|FATAL/.test(l)) return "error";
-  if (l.includes("WARN")) return "warn";
+  // Case-insensitive "error"/"exception"/"fatal" catches both game-server
+  // log conventions (usually ALL CAPS, e.g. "[ERROR]") and our own
+  // panel-injected system messages (e.g. "[System Error]"), which use
+  // normal title case and were previously falling through to "info".
+  if (/error|exception|fatal/i.test(l)) return "error";
+  if (/warn/i.test(l)) return "warn";
   return "info";
 };
 
@@ -469,10 +473,26 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
     });
     sockRef.current = socket;
 
+    let hasConnectedBefore = false;
+    const expectSnapshotRef = { current: false };
+
     socket.on("connect", () => {
       socket.emit("joinServer", serverId);
       setConnected(true);
-      setLogs((p) => [...p, "[System] Connected to console stream."]);
+      if (hasConnectedBefore) {
+        // This is a reconnect (network blip, phone lock, etc.), not the
+        // initial connection. The server will re-send up to its last 100
+        // lines as a fresh snapshot via "log" right after joinServer — mark
+        // that the next log event should replace the buffer rather than
+        // append to it, otherwise every reconnect duplicates up to 100
+        // lines on top of what's already shown (and can evict genuinely
+        // new lines once the MAX_LOG_LINES cap is hit).
+        expectSnapshotRef.current = true;
+        setLogs((p) => [...p, "[System] Reconnected — refreshing log buffer."]);
+      } else {
+        hasConnectedBefore = true;
+        setLogs((p) => [...p, "[System] Connected to console stream."]);
+      }
     });
 
     socket.on("log", (data: string) => {
@@ -510,7 +530,9 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
       });
 
       setLogs((prev) => {
-        const next = [...prev, ...lines];
+        const base = expectSnapshotRef.current ? [] : prev;
+        expectSnapshotRef.current = false;
+        const next = [...base, ...lines];
         return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next;
       });
     });

@@ -18,7 +18,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
-  const { panelName, enableLoginAnimation, allowRegistration } = useSettings();
+  const { panelName, allowRegistration } = useSettings();
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -30,11 +30,6 @@ export default function Login() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      if (enableLoginAnimation === false) {
-        gsap.set([".frost-brand", ".frost-card-shell"], { autoAlpha: 1, y: 0 });
-        return;
-      }
-
       gsap.set([".frost-brand", ".frost-card-shell"], { autoAlpha: 0, y: 24 });
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
       tl.to(".frost-brand", { autoAlpha: 1, y: 0, duration: 0.7 }, 0.15)
@@ -42,7 +37,7 @@ export default function Login() {
     }, rootRef);
 
     return () => ctx.revert();
-  }, [enableLoginAnimation]);
+  }, []);
 
   const displayName = panelName || "FrostByte Panel";
 

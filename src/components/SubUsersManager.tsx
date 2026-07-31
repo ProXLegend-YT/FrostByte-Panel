@@ -16,7 +16,8 @@ const ALL_PERMISSIONS = [
   { id: "mods", label: "Mods Management", group: "Management" },
   { id: "settings", label: "Server Settings", group: "Configuration" },
   { id: "properties", label: "Server Properties", group: "Configuration" },
-  { id: "backup", label: "Backup Management", group: "Management" }
+  { id: "backup", label: "Backup Management", group: "Management" },
+  { id: "schedule", label: "Scheduled Tasks", group: "Management" }
 ];
 
 export default function SubUsersManager({ serverId }: SubUsersManagerProps) {

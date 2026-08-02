@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Terminal as XTerm,
   Cpu,
@@ -13,6 +13,7 @@ import {
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import Sparkline from "./Sparkline";
 import PlayerManager from "./PlayerManager";
 
 /* ═══════════════════════════════════════════════════════
@@ -308,59 +309,9 @@ function AnimNum({ value, decimals = 1 }: { value: number; decimals?: number }) 
 }
 
 /* ═══════════════════════════════════════════════════════
-   SPARKLINE — rolling history chart with live dot
+   SPARKLINE — now shared via components/Sparkline.tsx, imported at the
+   top of this file. See that component for implementation.
 ═══════════════════════════════════════════════════════ */
-
-function Spark({
-  data,
-  color,
-  max,
-  w = 118,
-  h = 28,
-}: {
-  data: number[];
-  color: string;
-  max: number;
-  w?: number;
-  h?: number;
-}) {
-  const gid = useId().replace(/[^a-zA-Z0-9]/g, "");
-  const step = w / (SPARK_CAP - 1);
-
-  const pts = data.map((v, i) => {
-    const x = i * step;
-    const y = h - 3 - (Math.min(Math.max(v, 0), max) / (max || 1)) * (h - 8);
-    return [x, y] as const;
-  });
-
-  if (pts.length < 2) {
-    return (
-      <div style={{ width: w, height: h }} className="flex items-end">
-        <div className="w-full border-b border-dashed border-white/10" />
-      </div>
-    );
-  }
-
-  const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${h} L0,${h} Z`;
-  const [lx, ly] = pts[pts.length - 1];
-
-  return (
-    <svg width={w} height={h} className="overflow-visible">
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${gid})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={lx} cy={ly} r="2" fill={color}>
-        <animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════
    SEGMENTED DRIVE BAR — storage bay indicator
@@ -761,7 +712,7 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
                   </p>
                   <p className="qx-mono text-[9px] text-slate-600 mt-1">cap {stats.limitCpu}%</p>
                 </div>
-                <Spark data={cpuHist} color="#34d399" max={stats.limitCpu || 100} />
+                <Sparkline data={cpuHist} color="#34d399" max={stats.limitCpu || 100} w={118} h={28} cap={SPARK_CAP} />
               </div>
 
               <div className="mx-4 border-t border-white/[0.05]" />
@@ -779,7 +730,7 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
                   </p>
                   <p className="qx-mono text-[9px] text-slate-600 mt-1">cap {stats.limitRam} MB</p>
                 </div>
-                <Spark data={ramHist} color="#4ade80" max={stats.limitRam || 1024} />
+                <Sparkline data={ramHist} color="#4ade80" max={stats.limitRam || 1024} w={118} h={28} cap={SPARK_CAP} />
               </div>
 
               <div className="mx-4 border-t border-white/[0.05]" />

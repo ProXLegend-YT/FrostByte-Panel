@@ -390,13 +390,11 @@ setup_cloudflare_tunnel_token() {
     return
   fi
 
-  # Also make sure this tunnel's public-hostname route (configured in the
-  # Zero Trust dashboard, not here) actually points at the right local
-  # service — that part has to be set up in the dashboard UI since a token
-  # run doesn't manage ingress rules locally the way a named-tunnel config
-  # file does. Remind the user rather than silently assuming it's correct.
-  echo -e "${G}Make sure this tunnel's Public Hostname route in the dashboard points to: http://localhost:${backend_port}${NC}"
-  read -r -p "$(echo -e "${W}Press Enter once that's confirmed (or already set up)...${NC}")" _
+  # The tunnel's public-hostname route (which local service it forwards to)
+  # is configured in the Zero Trust dashboard, not here — a token run
+  # doesn't manage ingress rules locally. This is just a heads-up, not
+  # something to block on: if it's already set up, this is a no-op notice.
+  echo -e "${G}Note: make sure this tunnel's Public Hostname route in the dashboard points to http://localhost:${backend_port}${NC}"
 
   local cloudflared_path
   cloudflared_path=$(command -v cloudflared)
@@ -497,6 +495,12 @@ do_install() {
   USE_REVERSE_PROXY=false
   USE_CF_TUNNEL=false
   USE_CF_TUNNEL_TOKEN=false
+  # Always have a default so set -u doesn't crash later — every branch below
+  # can safely overwrite this, but none of them are required to remember to.
+  # (This was the actual bug behind "ORIGIN: unbound variable": leaving the
+  # domain/hostname prompt blank on options 1, 2, 3, or 5 skipped the only
+  # place ORIGIN used to get assigned.)
+  ORIGIN=""
   case "$DOMAIN_CHOICE" in
     1)
       read -r -p "$(echo -e "${W}Domain (e.g. panel.example.com): ${NC}")" PANEL_DOMAIN
@@ -521,10 +525,6 @@ do_install() {
       fi
       ;;
     5)
-      read -r -p "$(echo -e "${W}Hostname this tunnel is routed to in Zero Trust (e.g. panel.example.com) — used for ALLOWED_ORIGINS only, leave blank to skip: ${NC}")" PANEL_DOMAIN
-      if [[ -n "$PANEL_DOMAIN" ]]; then
-        ORIGIN="https://${PANEL_DOMAIN}"
-      fi
       USE_CF_TUNNEL_TOKEN=true
       ;;
     *)

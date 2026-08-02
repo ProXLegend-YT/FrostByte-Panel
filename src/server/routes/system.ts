@@ -210,7 +210,7 @@ router.get("/paper-versions", async (req, res) => {
   res.json(versions);
 });
 
-router.get("/stats", (req, res) => {
+router.get("/stats", async (req, res) => {
   const cpus = os.cpus();
   const totalMemory = os.totalmem();
   const freeMemory = os.freemem();
@@ -223,12 +223,45 @@ router.get("/stats", (req, res) => {
   const coreCount = cpus.length || 1;
   const normalizedCpuUsage = Math.min(100, Math.round((os.loadavg()[0] / coreCount) * 100));
 
+  // Node has no built-in cross-platform disk-usage API. `df` is available
+  // on essentially every environment this panel targets (standard Linux,
+  // Termux included) — shell out to it rather than adding a dependency for
+  // something this simple. Falls back to 0 (previous permanent behavior)
+  // if df isn't available or parsing fails, rather than erroring the whole
+  // stats endpoint over a non-critical metric.
+  let diskUsage = 0;
+  let diskTotal = 0;
+  let diskFree = 0;
+  try {
+    const { exec } = await import("child_process");
+    const dfOutput = await new Promise<string>((resolve, reject) => {
+      exec(`df -k "${process.cwd()}"`, { timeout: 3000 }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout);
+      });
+    });
+    // Second line of `df -k` output: Filesystem 1K-blocks Used Available Use% Mounted
+    const dataLine = dfOutput.trim().split("\n")[1];
+    const parts = dataLine?.trim().split(/\s+/);
+    if (parts && parts.length >= 5) {
+      diskTotal = parseInt(parts[1], 10) * 1024;
+      diskFree = parseInt(parts[3], 10) * 1024;
+      const usePercent = parseInt(parts[4].replace("%", ""), 10);
+      if (!isNaN(usePercent)) diskUsage = usePercent;
+    }
+  } catch {
+    // df unavailable or parsing failed — leave diskUsage at 0 rather than
+    // failing the whole endpoint over a non-critical metric.
+  }
+
   res.json({
     cpuUsage: normalizedCpuUsage,
     totalMemory,
     freeMemory,
     ramUsage: Math.round(((totalMemory - freeMemory) / totalMemory) * 100),
-    diskUsage: 0, // Not yet implemented — intentionally not surfaced in the UI
+    diskUsage,
+    diskTotal,
+    diskFree,
   });
 });
 

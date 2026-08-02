@@ -11,6 +11,7 @@ const ALL_PERMISSIONS = [
   { id: "start", label: "Start Server", group: "Power" },
   { id: "stop", label: "Stop Server", group: "Power" },
   { id: "restart", label: "Restart Server", group: "Power" },
+  { id: "console", label: "Send Console Commands", group: "Power" },
   { id: "files", label: "File Management", group: "Management" },
   { id: "plugins", label: "Plugins Management", group: "Management" },
   { id: "mods", label: "Mods Management", group: "Management" },

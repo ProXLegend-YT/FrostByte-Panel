@@ -5,11 +5,17 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ActivityFeed from "../components/ActivityFeed";
+import Sparkline from "../components/Sparkline";
+
+const HISTORY_CAP = 30; // 30 samples at 5s polling = last 2.5 minutes of trend
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [servers, setServers] = useState<any[]>([]);
   const { user, isAdmin } = useAuth();
+
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [ramHistory, setRamHistory] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -20,6 +26,8 @@ export default function Dashboard() {
         ]);
         setStats(statsRes.data);
         setServers(serversRes.data);
+        setCpuHistory((h) => [...h, statsRes.data.cpuUsage ?? 0].slice(-HISTORY_CAP));
+        setRamHistory((h) => [...h, statsRes.data.ramUsage ?? 0].slice(-HISTORY_CAP));
       } catch(e){}
     };
     fetchData();
@@ -74,13 +82,32 @@ export default function Dashboard() {
         )}
       </div>
       
-      <motion.div variants={container} initial="hidden" animate="show" className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-2 lg:max-w-3xl'} gap-5 mb-12`}>
+      <motion.div variants={container} initial="hidden" animate="show" className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-2 lg:max-w-3xl'} gap-5 mb-12`}>
         <StatCard title="Total Servers" value={servers.length.toString()} icon={<Server size={22} className="text-cyan-300" />} trend={createdThisWeek > 0 ? `+${createdThisWeek} this week` : "No new servers this week"} chartColor="from-cyan-400 to-cyan-400/0" />
         <StatCard title="Running Servers" value={runningServers.toString()} icon={<Activity size={22} className="text-emerald-400" />} trend="Active now" chartColor="from-emerald-500 to-emerald-500/0" />
         {isAdmin && (
           <>
-            <StatCard title="Dedicated CPU Usage" value={`${stats.cpuUsage}%`} icon={<Cpu size={22} className="text-sky-400" />} trend="Normal load" chartColor="from-sky-500 to-sky-500/0" />
-            <StatCard title="Dedicated RAM Usage" value={`${stats.ramUsage}%`} icon={<MemoryStick size={22} className="text-violet-400" />} trend="Stable" chartColor="from-violet-500 to-violet-500/0" />
+            <StatCard
+              title="Dedicated CPU Usage"
+              value={`${stats.cpuUsage}%`}
+              icon={<Cpu size={22} className="text-sky-400" />}
+              chartColor="from-sky-500 to-sky-500/0"
+              spark={cpuHistory.length >= 2 && <Sparkline data={cpuHistory} color="#38bdf8" max={100} cap={HISTORY_CAP} w={100} h={30} />}
+            />
+            <StatCard
+              title="Dedicated RAM Usage"
+              value={`${stats.ramUsage}%`}
+              icon={<MemoryStick size={22} className="text-violet-400" />}
+              chartColor="from-violet-500 to-violet-500/0"
+              spark={ramHistory.length >= 2 && <Sparkline data={ramHistory} color="#a78bfa" max={100} cap={HISTORY_CAP} w={100} h={30} />}
+            />
+            <StatCard
+              title="Disk Usage"
+              value={`${stats.diskUsage}%`}
+              icon={<HardDrive size={22} className="text-amber-400" />}
+              trend={stats.diskTotal ? `${formatBytes(stats.diskFree)} free of ${formatBytes(stats.diskTotal)}` : undefined}
+              chartColor="from-amber-500 to-amber-500/0"
+            />
           </>
         )}
       </motion.div>
@@ -154,7 +181,14 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, trend, chartColor }: { title: string, value: string, icon: React.ReactNode, trend?: string, chartColor?: string }) {
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 GB";
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+}
+
+function StatCard({ title, value, icon, trend, chartColor, spark }: { title: string, value: string, icon: React.ReactNode, trend?: string, chartColor?: string, spark?: React.ReactNode }) {
   const itemAnim = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
@@ -169,6 +203,11 @@ function StatCard({ title, value, icon, trend, chartColor }: { title: string, va
         <div className="p-3 bg-white/5 rounded-xl border border-white/10 shadow-inner">
           {icon}
         </div>
+        {spark && (
+          <div className="w-[100px] h-[30px] opacity-90">
+            {spark}
+          </div>
+        )}
       </div>
       <div className="relative z-10">
         <h3 className="text-3xl font-black text-white tracking-tight mb-1 drop-shadow-md">{value}</h3>

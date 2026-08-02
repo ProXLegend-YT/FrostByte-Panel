@@ -21,9 +21,9 @@ router.put("/:id/version", requireServerAccess("settings"), changeServerVersion)
 router.put("/:id/resources", requireServerAccess(), updateServerResources);
 router.put("/:id/bot-config", requireServerAccess(), updateBotConfig);
 
-router.post("/:id/start", requireServerAccess("power"), startServer);
-router.post("/:id/stop", requireServerAccess("power"), stopServer);
-router.post("/:id/restart", requireServerAccess("power"), restartServer);
+router.post("/:id/start", requireServerAccess("start"), startServer);
+router.post("/:id/stop", requireServerAccess("stop"), stopServer);
+router.post("/:id/restart", requireServerAccess("restart"), restartServer);
 router.post("/:id/command", requireServerAccess("console"), sendCommand);
 
 // Simple file endpoints
@@ -36,10 +36,10 @@ router.post("/:id/files/zip", requireServerAccess("files"), zipFiles);
 router.delete("/:id/files", requireServerAccess("files"), deleteFile);
 
 // Backup endpoints
-router.get("/:id/backups", requireServerAccess("backups"), getBackups);
-router.post("/:id/backups", requireServerAccess("backups"), createBackup);
-router.get("/:id/backups/:filename", requireServerAccess("backups"), downloadBackup);
-router.delete("/:id/backups/:filename", requireServerAccess("backups"), deleteBackup);
+router.get("/:id/backups", requireServerAccess("backup"), getBackups);
+router.post("/:id/backups", requireServerAccess("backup"), createBackup);
+router.get("/:id/backups/:filename", requireServerAccess("backup"), downloadBackup);
+router.delete("/:id/backups/:filename", requireServerAccess("backup"), deleteBackup);
 
 
 // Sub-users endpoints (owner/admin only — a sub-user must never be able to

@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { Server, Plus } from "lucide-react";
+import { Server, Plus, Play, Square, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import ServerLiveStats from "../components/ServerLiveStats";
 
 export default function ServerList() {
   const [servers, setServers] = useState<any[]>([]);
+  const [pendingAction, setPendingAction] = useState<Record<string, "start" | "stop" | "restart">>({});
   const { user, isAdmin, canCreateServers } = useAuth();
 
   const fetchServers = async () => {
@@ -15,6 +16,34 @@ export default function ServerList() {
       const res = await axios.get("/api/servers");
       setServers(res.data);
     } catch(e) {}
+  };
+
+  const handleQuickAction = async (e: React.MouseEvent, serverId: string, action: "start" | "stop" | "restart") => {
+    // Prevent the click from bubbling up to the wrapping <Link> and
+    // navigating into the server detail page — this button should act in
+    // place, right from the list.
+    e.preventDefault();
+    e.stopPropagation();
+    if (pendingAction[serverId]) return;
+
+    setPendingAction((p) => ({ ...p, [serverId]: action }));
+    try {
+      await axios.post(`/api/servers/${serverId}/${action}`);
+      // Give the container a moment to actually transition state before
+      // refetching — otherwise the immediate refetch below can still show
+      // the pre-action status and make the click look like it did nothing.
+      setTimeout(fetchServers, 1500);
+    } catch (err) {
+      console.error(`Failed to ${action} server`, err);
+    } finally {
+      setTimeout(() => {
+        setPendingAction((p) => {
+          const next = { ...p };
+          delete next[serverId];
+          return next;
+        });
+      }, 1500);
+    }
   };
 
   useEffect(() => {
@@ -81,6 +110,40 @@ export default function ServerList() {
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{server.status}</span>
                     </div>
                   </div>
+                </div>
+                {/* Quick actions — act in place without navigating into the
+                   server. z-20 keeps them clickable above the card's own
+                   Link overlay. */}
+                <div className="flex items-center gap-1.5 relative z-20 shrink-0">
+                  {server.status !== 'online' ? (
+                    <button
+                      onClick={(e) => handleQuickAction(e, server.id, 'start')}
+                      disabled={!!pendingAction[server.id]}
+                      title="Start"
+                      className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
+                    >
+                      {pendingAction[server.id] === 'start' ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(e) => handleQuickAction(e, server.id, 'restart')}
+                        disabled={!!pendingAction[server.id]}
+                        title="Restart"
+                        className="p-2 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors disabled:opacity-40"
+                      >
+                        <RefreshCw size={16} className={pendingAction[server.id] === 'restart' ? 'animate-spin' : ''} />
+                      </button>
+                      <button
+                        onClick={(e) => handleQuickAction(e, server.id, 'stop')}
+                        disabled={!!pendingAction[server.id]}
+                        title="Stop"
+                        className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                      >
+                        {pendingAction[server.id] === 'stop' ? <RefreshCw size={16} className="animate-spin" /> : <Square size={16} />}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               

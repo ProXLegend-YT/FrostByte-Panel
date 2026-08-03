@@ -385,6 +385,19 @@ setup_cloudflare_tunnel_token() {
   echo
   read -r -p "$(echo -e "${W}Paste your Cloudflare Tunnel token: ${NC}")" CF_TUNNEL_TOKEN
 
+  # Cloudflare's dashboard shows a full shell command to run
+  # ("sudo cloudflared service install <token>"), and it's an easy mistake
+  # to copy that whole line instead of just the token at the end. Strip a
+  # recognized prefix automatically rather than silently accepting a
+  # broken token and failing later with a confusing "tunnel won't start"
+  # error that gives no hint why.
+  if [[ "$CF_TUNNEL_TOKEN" == *"cloudflared service install"* ]]; then
+    CF_TUNNEL_TOKEN="${CF_TUNNEL_TOKEN##*install }"
+    warn "Detected the full install command instead of just the token — extracted the token automatically."
+  fi
+  # Trim any stray leading/trailing whitespace too, in case of a messy paste.
+  CF_TUNNEL_TOKEN="$(echo -n "$CF_TUNNEL_TOKEN" | xargs)"
+
   if [[ -z "$CF_TUNNEL_TOKEN" ]]; then
     warn "No token entered — skipping tunnel setup. You can re-run this later from the panel management menu."
     return
@@ -497,10 +510,12 @@ do_install() {
   USE_CF_TUNNEL_TOKEN=false
   # Always have a default so set -u doesn't crash later — every branch below
   # can safely overwrite this, but none of them are required to remember to.
-  # (This was the actual bug behind "ORIGIN: unbound variable": leaving the
-  # domain/hostname prompt blank on options 1, 2, 3, or 5 skipped the only
-  # place ORIGIN used to get assigned.)
+  # (This was the actual bug behind "ORIGIN: unbound variable" and
+  # "PANEL_DOMAIN: unbound variable": option 5 doesn't prompt for a domain
+  # at all since it was simplified to just ask for the tunnel token, so
+  # neither variable was ever assigned on that path.)
   ORIGIN=""
+  PANEL_DOMAIN=""
   case "$DOMAIN_CHOICE" in
     1)
       read -r -p "$(echo -e "${W}Domain (e.g. panel.example.com): ${NC}")" PANEL_DOMAIN

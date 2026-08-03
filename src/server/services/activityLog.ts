@@ -16,7 +16,8 @@ export type ActivityAction =
   | "settings.update"
   | "scheduledTask.create" | "scheduledTask.update" | "scheduledTask.delete"
   | "scheduledTask.restart" | "scheduledTask.backup" | "scheduledTask.command"
-  | "scheduledTask.stop" | "scheduledTask.start";
+  | "scheduledTask.stop" | "scheduledTask.start"
+  | "coins.grant" | "coins.deduct" | "store.purchase" | "store.item_create" | "store.item_update" | "store.item_delete";
 
 export interface ActivityEntry {
   id: string;

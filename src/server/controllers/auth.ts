@@ -46,7 +46,7 @@ export const register = async (req: Request, res: Response) => {
   const role = users.length === 0 ? "owner" : "user";
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = {
+  const user: any = {
     id: randomUUID(),
     username,
     password: hashedPassword,
@@ -54,6 +54,11 @@ export const register = async (req: Request, res: Response) => {
     passwordVersion: 0,
     createdAt: new Date().toISOString(),
   };
+
+  if (settings.coinsEnabled === true) {
+    const startingBalance = typeof settings.coinsStartingBalance === "number" ? settings.coinsStartingBalance : 100;
+    user.coins = startingBalance;
+  }
 
   users.push(user);
   await writeJSON("users.json", users);

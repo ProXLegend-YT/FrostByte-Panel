@@ -3,7 +3,7 @@ import { getVersions } from "../services/docker.js";
 import { requireAuth } from "../middleware/auth.js";
 import os from "os";
 import { readJSON, writeJSON } from "../services/db.js";
-import { getActivityForUser } from "../services/activityLog.js";
+import { getActivityForUser, logActivity } from "../services/activityLog.js";
 import { getNotifications, markRead, deleteNotification } from "../services/notifications.js";
 import bcrypt from "bcryptjs";
 
@@ -486,5 +486,178 @@ router.post("/update", async (req, res) => {
 
 
 
+
+// --- Coin economy & store ----------------------------------------------
+// See src/server/services/coins.ts for the actual balance/ledger/store
+// logic — these routes are a thin HTTP layer with permission checks and
+// input validation on top of it.
+
+router.get("/coins/settings", async (req, res) => {
+  const { getCoinSettings } = await import("../services/coins.js");
+  res.json(await getCoinSettings());
+});
+
+router.put("/coins/settings", async (req, res) => {
+  const user = (req as any).user;
+  if (user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { enabled, currencyName, currencySymbol, startingBalance } = req.body;
+  if (currencyName !== undefined && (typeof currencyName !== "string" || !currencyName.trim() || currencyName.length > 30)) {
+    return res.status(400).json({ error: "currencyName must be 1-30 characters." });
+  }
+  if (currencySymbol !== undefined && (typeof currencySymbol !== "string" || currencySymbol.length > 10)) {
+    return res.status(400).json({ error: "currencySymbol must be at most 10 characters." });
+  }
+  if (startingBalance !== undefined && (typeof startingBalance !== "number" || startingBalance < 0 || startingBalance > 1000000)) {
+    return res.status(400).json({ error: "startingBalance must be between 0 and 1,000,000." });
+  }
+
+  const { updateCoinSettings } = await import("../services/coins.js");
+  const updated = await updateCoinSettings({ enabled, currencyName, currencySymbol, startingBalance });
+  logActivity({ actorId: user.id, actorUsername: user.username, action: "settings.update", target: "Coin economy settings" });
+  res.json(updated);
+});
+
+router.get("/coins/balance", async (req, res) => {
+  const user = (req as any).user;
+  const { getBalance, getCoinSettings } = await import("../services/coins.js");
+  const settings = await getCoinSettings();
+  if (!settings.enabled) return res.json({ balance: 0, enabled: false });
+  const balance = await getBalance(user.id);
+  res.json({ balance, enabled: true });
+});
+
+router.get("/coins/transactions", async (req, res) => {
+  const user = (req as any).user;
+  const { getTransactions } = await import("../services/coins.js");
+  // Admins can view any user's ledger (for support/audit); everyone else
+  // only their own.
+  const targetUserId = (user.role === "admin" || user.role === "owner") && req.query.userId ? (req.query.userId as string) : user.id;
+  const transactions = await getTransactions(targetUserId, 200);
+  res.json(transactions);
+});
+
+router.post("/coins/grant", async (req, res) => {
+  const admin = (req as any).user;
+  if (admin.role !== "admin" && admin.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { userId, amount, reason } = req.body;
+  if (!userId || typeof amount !== "number" || amount <= 0 || amount > 1000000) {
+    return res.status(400).json({ error: "Provide userId and a positive amount (max 1,000,000)." });
+  }
+
+  const { grantCoins } = await import("../services/coins.js");
+  const result = await grantCoins(userId, amount, reason || "Admin grant", admin.id);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+
+  logActivity({ actorId: admin.id, actorUsername: admin.username, action: "coins.grant", target: `+${amount} to user ${userId}` });
+
+  try {
+    const { notifyUser } = await import("../services/notifications.js");
+    const settings = await (await import("../services/coins.js")).getCoinSettings();
+    await notifyUser(userId, {
+      type: "success",
+      title: `${settings.currencyName} received`,
+      message: `You received ${amount} ${settings.currencyName.toLowerCase()}${reason ? `: ${reason}` : "."}`,
+    });
+  } catch { /* best-effort */ }
+
+  res.json(result);
+});
+
+router.post("/coins/deduct", async (req, res) => {
+  const admin = (req as any).user;
+  if (admin.role !== "admin" && admin.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { userId, amount, reason } = req.body;
+  if (!userId || typeof amount !== "number" || amount <= 0 || amount > 1000000) {
+    return res.status(400).json({ error: "Provide userId and a positive amount (max 1,000,000)." });
+  }
+
+  const { deductCoins } = await import("../services/coins.js");
+  const result = await deductCoins(userId, amount, reason || "Admin deduction", admin.id);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+
+  logActivity({ actorId: admin.id, actorUsername: admin.username, action: "coins.deduct", target: `-${amount} from user ${userId}` });
+  res.json(result);
+});
+
+router.get("/store/items", async (req, res) => {
+  const user = (req as any).user;
+  const isAdmin = user.role === "admin" || user.role === "owner";
+  const { getStoreItems } = await import("../services/coins.js");
+  res.json(await getStoreItems(isAdmin && req.query.all === "true"));
+});
+
+const VALID_GRANT_TYPES = ["maxServers", "maxRamGb", "maxCpuPercent", "maxDiskGb"];
+
+router.post("/store/items", async (req, res) => {
+  const admin = (req as any).user;
+  if (admin.role !== "admin" && admin.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { name, description, cost, grant, enabled } = req.body;
+  if (!name || typeof name !== "string" || !name.trim()) return res.status(400).json({ error: "Name is required." });
+  if (typeof cost !== "number" || cost <= 0) return res.status(400).json({ error: "Cost must be a positive number." });
+  if (!grant || !VALID_GRANT_TYPES.includes(grant.type) || typeof grant.amount !== "number" || grant.amount <= 0) {
+    return res.status(400).json({ error: `grant.type must be one of: ${VALID_GRANT_TYPES.join(", ")}, with a positive grant.amount.` });
+  }
+
+  const { createStoreItem } = await import("../services/coins.js");
+  const item = await createStoreItem({
+    name: name.trim(),
+    description: (description || "").trim(),
+    cost,
+    grant,
+    enabled: enabled !== false,
+  });
+  logActivity({ actorId: admin.id, actorUsername: admin.username, action: "store.item_create", target: item.name });
+  res.json(item);
+});
+
+router.put("/store/items/:itemId", async (req, res) => {
+  const admin = (req as any).user;
+  if (admin.role !== "admin" && admin.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { name, description, cost, grant, enabled } = req.body;
+  if (cost !== undefined && (typeof cost !== "number" || cost <= 0)) return res.status(400).json({ error: "Cost must be a positive number." });
+  if (grant !== undefined && (!VALID_GRANT_TYPES.includes(grant.type) || typeof grant.amount !== "number" || grant.amount <= 0)) {
+    return res.status(400).json({ error: `grant.type must be one of: ${VALID_GRANT_TYPES.join(", ")}, with a positive grant.amount.` });
+  }
+
+  const { updateStoreItem } = await import("../services/coins.js");
+  const updated = await updateStoreItem(req.params.itemId, { name, description, cost, grant, enabled });
+  if (!updated) return res.status(404).json({ error: "Store item not found." });
+
+  logActivity({ actorId: admin.id, actorUsername: admin.username, action: "store.item_update", target: updated.name });
+  res.json(updated);
+});
+
+router.delete("/store/items/:itemId", async (req, res) => {
+  const admin = (req as any).user;
+  if (admin.role !== "admin" && admin.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { getStoreItems, deleteStoreItem } = await import("../services/coins.js");
+  const items = await getStoreItems(true);
+  const existing = items.find((i) => i.id === req.params.itemId);
+  if (!existing) return res.status(404).json({ error: "Store item not found." });
+
+  await deleteStoreItem(req.params.itemId);
+  logActivity({ actorId: admin.id, actorUsername: admin.username, action: "store.item_delete", target: existing.name });
+  res.json({ success: true });
+});
+
+router.post("/store/purchase", async (req, res) => {
+  const user = (req as any).user;
+  const { itemId } = req.body;
+  if (!itemId) return res.status(400).json({ error: "itemId is required." });
+
+  const { getCoinSettings, purchaseStoreItem } = await import("../services/coins.js");
+  const settings = await getCoinSettings();
+  if (!settings.enabled) return res.status(403).json({ error: "The store isn't currently enabled." });
+
+  const result = await purchaseStoreItem(user.id, itemId);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  res.json(result);
+});
 
 export default router;

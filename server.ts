@@ -24,15 +24,37 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 
+// An empty ALLOWED_ORIGINS means the panel accepts requests from whatever
+// origin it's actually visited at (safe here since auth uses Authorization
+// headers, not cookies — see the CORS config below). This is just a heads
+// up for anyone who wants to lock it down to a specific domain explicitly.
+if (ALLOWED_ORIGINS.length === 0 && process.env.NODE_ENV === "production") {
+  console.log(
+    "[i] ALLOWED_ORIGINS is not set — the panel will accept requests from any origin it's visited at. " +
+    "To restrict this to a specific domain, set ALLOWED_ORIGINS in .env (e.g. https://panel.example.com) and restart."
+  );
+}
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // same-origin / non-browser clients
-    if (ALLOWED_ORIGINS.length === 0) {
-      if (process.env.NODE_ENV !== "production") return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
+    if (ALLOWED_ORIGINS.length > 0) {
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      return callback(new Error(`Not allowed by CORS: "${origin}" is not in ALLOWED_ORIGINS — add it to .env and restart the panel.`));
     }
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"));
+    // No explicit allowlist configured. Reflecting the request's own origin
+    // (rather than wildcard, and rather than hard-rejecting) is safe here
+    // specifically because this panel authenticates via `Authorization:
+    // Bearer <token>` headers read from localStorage, not cookies — the
+    // cross-site attack CORS restrictions primarily guard against (a
+    // malicious page silently riding an existing session cookie) doesn't
+    // apply to a bearer-token API, since a third-party origin has no way to
+    // read this panel's stored token to forge the header itself. This is
+    // what lets a fresh install work immediately without requiring anyone
+    // to manually edit .env before the UI even becomes usable; setting
+    // ALLOWED_ORIGINS explicitly still locks this down further for anyone
+    // who wants that.
+    return callback(null, true);
   },
   credentials: true,
 };

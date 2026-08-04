@@ -540,6 +540,11 @@ do_install() {
       fi
       ;;
     5)
+      echo -e "${G}If you already set up a Public Hostname for this tunnel in the Zero Trust dashboard, enter it now — this lets the panel accept requests from your real domain instead of rejecting them.${NC}"
+      read -r -p "$(echo -e "${W}Public hostname (e.g. panel.example.com), or leave blank if not set up yet: ${NC}")" PANEL_DOMAIN
+      if [[ -n "$PANEL_DOMAIN" ]]; then
+        ORIGIN="https://${PANEL_DOMAIN}"
+      fi
       USE_CF_TUNNEL_TOKEN=true
       ;;
     *)

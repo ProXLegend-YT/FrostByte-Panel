@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { LoadingOverlay } from "../components/LoadingOverlay";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
@@ -41,17 +41,6 @@ export default function Login() {
 
   const displayName = panelName || "FrostByte Panel";
 
-  const particleSeeds = useMemo(
-    () =>
-      Array.from({ length: 18 }, () => ({
-        left: Math.random() * 100,
-        duration: 14 + Math.random() * 12,
-        delay: Math.random() * 14,
-        drift: Math.random() * 60 - 30,
-      })),
-    []
-  );
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -71,58 +60,12 @@ export default function Login() {
 
   return (
     <div className="frost-wrapper" ref={rootRef}>
-      <div className="frost-field">
-        <div className="frost-orb frost-orb-a" />
-        <div className="frost-orb frost-orb-b" />
-      </div>
-      <div className="frost-grid" />
-
-      {/* Drifting ice motes — pure CSS, randomized per-mount for a natural feel */}
-      <div className="frost-particles" aria-hidden="true">
-        {particleSeeds.map((p, i) => (
-          <div
-            key={i}
-            className="frost-particle"
-            style={{
-              left: `${p.left}%`,
-              bottom: `-10px`,
-              animationDuration: `${p.duration}s`,
-              animationDelay: `${p.delay}s`,
-              ['--drift' as any]: `${p.drift}px`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Signature element: hexagonal ice-crystal lattice, draws itself in on load */}
-      <div className="frost-crystal-wrap" aria-hidden="true">
-        <svg viewBox="0 0 200 200">
-          <defs>
-            <linearGradient id="frost-crystal-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#5eead4" />
-              <stop offset="100%" stopColor="#38bdf8" />
-            </linearGradient>
-          </defs>
-          {/* Outer hex */}
-          <polygon
-            className="frost-crystal-line"
-            points="100,20 165,57.5 165,132.5 100,170 35,132.5 35,57.5"
-          />
-          {/* Inner spokes */}
-          <polygon
-            className="frost-crystal-line delay-1"
-            points="100,55 135,77.5 135,122.5 100,145 65,122.5 65,77.5"
-          />
-          <line className="frost-crystal-line delay-2" x1="100" y1="20" x2="100" y2="170" />
-          <line className="frost-crystal-line delay-2" x1="35" y1="57.5" x2="165" y2="132.5" />
-          <line className="frost-crystal-line delay-2" x1="165" y1="57.5" x2="35" y2="132.5" />
-          {[
-            [100, 20], [165, 57.5], [165, 132.5], [100, 170], [35, 132.5], [35, 57.5], [100, 95],
-          ].map(([cx, cy], i) => (
-            <circle key={i} className="frost-crystal-node" cx={cx} cy={cy} r={2.2} style={{ animationDelay: `${0.4 + i * 0.08}s` }} />
-          ))}
-        </svg>
-      </div>
+      {/* No local orb/grid/particle layers here anymore — GlobalBackground
+          (mounted at the app root) already supplies the ambient atmosphere.
+          Rendering a second full set on top of it was the main cause of both
+          the lag (2x blurred, animating layers compositing at once on
+          mobile GPUs) and the login card reading as murkier than intended
+          (two stacked semi-opaque layers behind the glass instead of one). */}
 
       <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div className="frost-brand">

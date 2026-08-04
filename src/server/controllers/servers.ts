@@ -1424,6 +1424,242 @@ export const installWorld = async (req: Request, res: Response) => {
   }
 };
 
+// --- Modpack installer ------------------------------------------------
+// Modrinth's .mrpack format is a real, documented standard — a zip
+// containing a modrinth.index.json manifest (list of every mod + its
+// exact CDN download URL + sha1/sha512 hashes) plus an overrides/ folder
+// of config files, resource packs, etc. Unlike "worlds" (no clean API),
+// this is honest one-click territory: download the pack, read the
+// manifest, fetch every listed mod file in parallel, verify each against
+// its published hash, drop overrides/ on top, back up whatever mods/
+// folder existed first. No guessing, no scraping.
+
+interface MrpackFile {
+  path: string;
+  hashes: { sha1?: string; sha512?: string };
+  downloads: string[];
+  fileSize: number;
+  env?: { client?: string; server?: string };
+}
+
+interface MrpackIndex {
+  formatVersion: number;
+  game: string;
+  versionId: string;
+  name: string;
+  dependencies: Record<string, string>; // e.g. "minecraft": "1.20.1", "fabric-loader": "0.15.0"
+  files: MrpackFile[];
+}
+
+async function sha1File(filePath: string): Promise<string> {
+  const crypto = await import("crypto");
+  const buf = await fs.readFile(filePath);
+  return crypto.createHash("sha1").update(buf).digest("hex");
+}
+
+export const installModpack = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  const { sourceUrl, projectId, versionId } = req.body;
+
+  const serverDir = path.join(process.cwd(), ".data", "servers", id);
+  if (!fs.existsSync(serverDir)) {
+    if (req.file) await fs.remove(req.file.path).catch(() => {});
+    return res.status(404).json({ error: "Server not found" });
+  }
+
+  // Same reasoning as installWorld: swapping the mods folder under a
+  // running server is asking for a corrupted/half-loaded state, and a
+  // modpack install can touch dozens of files at once — stop first.
+  const servers = await readJSON("servers.json") || [];
+  const server = servers.find((s: any) => s.id === id);
+  if (server?.containerId) {
+    const status = await getContainerStatus(server.containerId);
+    if (status?.State?.Running) {
+      if (req.file) await fs.remove(req.file.path).catch(() => {});
+      return res.status(409).json({ error: "Stop the server before installing a modpack." });
+    }
+  }
+
+  const axios = (await import("axios")).default;
+  let mrpackPath: string | null = null;
+  let cleanupMrpack = false;
+
+  try {
+    if (req.file) {
+      mrpackPath = req.file.path;
+      cleanupMrpack = true;
+    } else if (projectId && versionId) {
+      // Resolve a specific Modrinth modpack version to its .mrpack download URL.
+      const verRes = await axios.get(`https://api.modrinth.com/v2/version/${versionId}`, {
+        headers: { "User-Agent": "FrostByte-Panel/1.0" },
+      });
+      const file = (verRes.data.files || []).find((f: any) => f.filename?.endsWith(".mrpack")) || verRes.data.files?.[0];
+      if (!file) return res.status(404).json({ error: "This version has no downloadable pack file." });
+
+      const tempDir = path.join(process.cwd(), ".data", "temp");
+      await fs.ensureDir(tempDir);
+      mrpackPath = path.join(tempDir, `modpack-${uuidv4()}.mrpack`);
+      cleanupMrpack = true;
+      const dl = await axios({ url: file.url, method: "GET", responseType: "stream", headers: { "User-Agent": "FrostByte-Panel/1.0" } });
+      const writer = fs.createWriteStream(mrpackPath);
+      dl.data.pipe(writer);
+      await new Promise<void>((resolve, reject) => { writer.on("finish", resolve); writer.on("error", reject); });
+    } else if (sourceUrl) {
+      let parsed: URL;
+      try { parsed = new URL(sourceUrl); } catch { return res.status(400).json({ error: "Invalid source URL." }); }
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        return res.status(400).json({ error: "Source URL must be http or https." });
+      }
+      const tempDir = path.join(process.cwd(), ".data", "temp");
+      await fs.ensureDir(tempDir);
+      mrpackPath = path.join(tempDir, `modpack-${uuidv4()}.mrpack`);
+      cleanupMrpack = true;
+      const dl = await axios({ url: sourceUrl, method: "GET", responseType: "stream", headers: { "User-Agent": "FrostByte-Panel/1.0" }, maxRedirects: 5 });
+      const writer = fs.createWriteStream(mrpackPath);
+      dl.data.pipe(writer);
+      await new Promise<void>((resolve, reject) => { writer.on("finish", resolve); writer.on("error", reject); });
+    } else {
+      return res.status(400).json({ error: "Provide a .mrpack file, a sourceUrl, or a projectId+versionId." });
+    }
+
+    const stagingDir = path.join(process.cwd(), ".data", "temp", `modpack-staging-${uuidv4()}`);
+    await fs.ensureDir(stagingDir);
+    try {
+      const extract = (await import("extract-zip")).default;
+      await extract(mrpackPath, { dir: stagingDir });
+    } catch {
+      await fs.remove(stagingDir).catch(() => {});
+      return res.status(400).json({ error: "Could not extract the pack — is it a valid .mrpack file?" });
+    }
+
+    const indexPath = path.join(stagingDir, "modrinth.index.json");
+    if (!fs.existsSync(indexPath)) {
+      await fs.remove(stagingDir).catch(() => {});
+      return res.status(400).json({ error: "This doesn't look like a Modrinth modpack — no modrinth.index.json found." });
+    }
+    const index: MrpackIndex = await fs.readJson(indexPath);
+
+    if (index.game !== "minecraft") {
+      await fs.remove(stagingDir).catch(() => {});
+      return res.status(400).json({ error: `This pack is for "${index.game}", not Minecraft.` });
+    }
+
+    // Back up the existing mods folder before touching anything — same
+    // safety net pattern as world install. Skipped if there's nothing there.
+    const modsDir = path.join(serverDir, "mods");
+    let backupNote = "";
+    if (fs.existsSync(modsDir) && (await fs.readdir(modsDir)).length > 0) {
+      const backupsDir = path.join(serverDir, "backups");
+      await fs.ensureDir(backupsDir);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const backupName = `pre-modpack-install-${timestamp}.zip`;
+      const backupPath = path.join(backupsDir, backupName);
+      const archiver = (await import("archiver")).default;
+      await new Promise<void>((resolve, reject) => {
+        const output = fs.createWriteStream(backupPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        output.on("close", () => resolve());
+        archive.on("error", reject);
+        archive.pipe(output);
+        archive.directory(modsDir, false);
+        archive.finalize();
+      });
+      backupNote = ` Your previous mods folder was backed up as ${backupName}.`;
+    }
+    await fs.ensureDir(modsDir);
+
+    // Download every server-side mod file listed in the manifest, in
+    // parallel batches (not all at once — packs can list 100+ mods, and
+    // firing 100 concurrent connections at once is a good way to get
+    // rate-limited or choke the box's network). Each file is verified
+    // against its published sha1 hash so a corrupted download doesn't
+    // silently land in the mods folder.
+    const serverFiles = index.files.filter((f) => f.env?.server !== "unsupported");
+    const failed: string[] = [];
+    const BATCH_SIZE = 6;
+    for (let i = 0; i < serverFiles.length; i += BATCH_SIZE) {
+      const batch = serverFiles.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (file) => {
+        const targetPath = path.join(serverDir, file.path);
+        if (!isWithinBase(targetPath, serverDir)) { failed.push(file.path); return; }
+        await fs.ensureDir(path.dirname(targetPath));
+        const url = file.downloads[0];
+        if (!url) { failed.push(file.path); return; }
+        try {
+          const dl = await axios({ url, method: "GET", responseType: "stream", headers: { "User-Agent": "FrostByte-Panel/1.0" } });
+          const writer = fs.createWriteStream(targetPath);
+          dl.data.pipe(writer);
+          await new Promise<void>((resolve, reject) => { writer.on("finish", resolve); writer.on("error", reject); });
+          if (file.hashes?.sha1) {
+            const actual = await sha1File(targetPath);
+            if (actual !== file.hashes.sha1) {
+              await fs.remove(targetPath).catch(() => {});
+              failed.push(file.path);
+            }
+          }
+        } catch {
+          failed.push(file.path);
+        }
+      }));
+    }
+
+    // overrides/ is configs, resource packs, and anything else the pack
+    // author bundled directly rather than fetching from Modrinth — copy
+    // it straight over the server directory, on top of the downloaded mods.
+    const overridesDir = path.join(stagingDir, "overrides");
+    const serverOverridesDir = path.join(stagingDir, "server-overrides");
+    for (const dir of [overridesDir, serverOverridesDir]) {
+      if (fs.existsSync(dir)) {
+        await fs.copy(dir, serverDir, { overwrite: true });
+      }
+    }
+
+    await fs.remove(stagingDir).catch(() => {});
+
+    logActivity({
+      actorId: user.id,
+      actorUsername: user.username,
+      action: "modpack.install",
+      target: index.name || "modpack",
+      serverId: id,
+      metadata: { minecraftVersion: index.dependencies?.minecraft, modLoader: Object.keys(index.dependencies || {}).find((k) => k !== "minecraft"), fileCount: serverFiles.length, failedCount: failed.length },
+    });
+
+    const summary = failed.length > 0
+      ? `Installed ${index.name} with ${serverFiles.length - failed.length}/${serverFiles.length} mods (${failed.length} failed — check logs).${backupNote}`
+      : `Installed ${index.name} — ${serverFiles.length} mods ready.${backupNote}`;
+
+    try {
+      const { notifyUser } = await import("../services/notifications.js");
+      await notifyUser(user.id, {
+        type: failed.length > 0 ? "warning" : "success",
+        title: "Modpack installed",
+        message: summary,
+        serverId: id,
+        link: `/servers/${id}/mods`,
+      });
+    } catch { /* best-effort */ }
+
+    res.json({
+      success: true,
+      packName: index.name,
+      minecraftVersion: index.dependencies?.minecraft,
+      modLoader: Object.keys(index.dependencies || {}).find((k) => k !== "minecraft"),
+      installedCount: serverFiles.length - failed.length,
+      failedFiles: failed,
+      message: summary,
+    });
+  } catch (error: any) {
+    console.error("Modpack installation failed:", error.message);
+    res.status(500).json({ error: "Modpack installation failed: " + error.message });
+  } finally {
+    if (cleanupMrpack && mrpackPath) {
+      await fs.remove(mrpackPath).catch(() => {});
+    }
+  }
+};
+
 // --- Scheduled tasks ---------------------------------------------------
 // Thin HTTP layer over src/server/services/scheduler.ts, which owns the
 // actual storage and the background tick loop that runs due tasks.

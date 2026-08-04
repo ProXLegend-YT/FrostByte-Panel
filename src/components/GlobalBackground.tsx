@@ -27,7 +27,11 @@ export function GlobalBackground() {
         className="absolute rounded-full"
         style={{
           width: '46vw', height: '46vw', top: '-14vw', right: '-10vw',
-          background: 'radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 70%)',
+          // Raised from 0.10 — the whole point of a transparent login card
+          // is to reveal this glow, so it needs to be visible enough to be
+          // worth revealing. Too faint here made "more transparent" look
+          // like "more plain black" no matter how light the card got.
+          background: 'radial-gradient(circle, rgba(56,189,248,0.18) 0%, transparent 70%)',
           filter: 'blur(90px)',
         }}
       />
@@ -35,7 +39,7 @@ export function GlobalBackground() {
         className="absolute rounded-full"
         style={{
           width: '38vw', height: '38vw', bottom: '-12vw', left: '-8vw',
-          background: 'radial-gradient(circle, rgba(124,111,240,0.08) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(124,111,240,0.15) 0%, transparent 70%)',
           filter: 'blur(90px)',
         }}
       />

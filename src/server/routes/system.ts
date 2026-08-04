@@ -181,6 +181,62 @@ router.get("/marketplace/mods", async (req, res) => {
   res.json(results);
 });
 
+// Modpacks are a distinct Modrinth project_type from mods — this searches
+// that facet and additionally surfaces each pack's Minecraft version +
+// mod loader (fabric/forge/quilt/neoforge) from the search index's
+// `categories`/`versions` fields, so the picker can show that up front
+// instead of needing a follow-up request per result.
+router.get("/marketplace/modpacks", async (req, res) => {
+  const q = ((req.query.q as string) || "").trim();
+  const axios = (await import("axios")).default;
+  const results: any[] = [];
+  const LOADER_TAGS = ["fabric", "forge", "quilt", "neoforge"];
+
+  try {
+    const r = await axios.get(`https://api.modrinth.com/v2/search?query=${encodeURIComponent(q)}&facets=[["project_type:modpack"]]&limit=20`, {
+      headers: { "User-Agent": "FrostByte-Panel/1.0" },
+    });
+    for (const hit of r.data.hits || []) {
+      results.push({
+        id: hit.project_id,
+        name: hit.title,
+        tag: hit.description,
+        downloads: hit.downloads,
+        icon: hit.icon_url,
+        loaders: (hit.categories || []).filter((c: string) => LOADER_TAGS.includes(c)),
+        gameVersions: hit.versions || [],
+      });
+    }
+  } catch { /* honest empty result on failure, same as marketplace/mods */ }
+
+  results.sort((a, b) => b.downloads - a.downloads);
+  res.json(results);
+});
+
+// A pack's install button needs a concrete version to install, not just
+// the project — this lists installable versions (newest first) with the
+// exact game version + loader + the versionId installModpack expects.
+router.get("/marketplace/modpacks/:projectId/versions", async (req, res) => {
+  const { projectId } = req.params;
+  const axios = (await import("axios")).default;
+  try {
+    const r = await axios.get(`https://api.modrinth.com/v2/project/${projectId}/version`, {
+      headers: { "User-Agent": "FrostByte-Panel/1.0" },
+    });
+    const versions = (r.data || []).map((v: any) => ({
+      versionId: v.id,
+      versionNumber: v.version_number,
+      name: v.name,
+      gameVersions: v.game_versions,
+      loaders: v.loaders,
+      datePublished: v.date_published,
+    }));
+    res.json(versions);
+  } catch (e: any) {
+    res.status(502).json({ error: "Could not load versions for this pack." });
+  }
+});
+
 router.get("/versions", async (req, res) => {
   const type = (req.query.type as string) || "PAPER";
   const game = (req.query.game as string) || "minecraft";

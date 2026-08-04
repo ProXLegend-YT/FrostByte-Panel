@@ -225,6 +225,10 @@
   color: rgba(148, 163, 184, 0.7);
   text-transform: uppercase;
   margin-top: 0.25rem;
+  /* A soft dark shadow so the fine background grid lines don't visually
+     cut through the thin letterforms at this wide letter-spacing — was
+     reading as "glitchy lines in the text" before. */
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6);
 }
 
 /* Form card — genuine glass: light fill, moderate blur, a hairline
@@ -249,23 +253,36 @@
   box-shadow: 0 24px 70px -16px rgba(0,0,0,0.55);
 }
 
-/* The moving light along the edge is back, but as a `transform`-only
-   sweep on a pseudo-element instead of animating the shell's own
-   background-position (which forces a full repaint every frame). This
-   version runs entirely on the compositor thread. */
+/* The moving light along the edge — confined strictly to the 1px border
+   gap via mask-composite subtraction, so it reads as a thin light
+   traveling the frame (like the original design intent) instead of
+   bleeding across the glass as a broad diagonal streak. Still transform-
+   only, still compositor-cheap. */
 .frost-card-shell::before {
   content: "";
   position: absolute;
-  inset: -50%;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(94,234,212,0.7) 15deg,
+    rgba(94,234,212,0.9) 12deg,
+    rgba(94,234,212,0.3) 24deg,
     transparent 40deg,
     transparent 360deg
   );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
   animation: frost-edge-sweep 6s linear infinite;
   will-change: transform;
+  pointer-events: none;
 }
 
 @keyframes frost-edge-sweep {
@@ -278,14 +295,11 @@
   /* Much lower fill than before — this is the actual "can I see the
      background through it" test, and the previous 16-22% navy fill was
      still reading as a solid dark card against a plain black backdrop. */
-  background: linear-gradient(135deg, rgba(15,23,42,0.10) 0%, rgba(10,14,24,0.06) 100%);
-  /* Lowered from blur(14px) saturate(1.5) to blur(10px) saturate(1.3).
-     backdrop-filter isn't a one-time cost — the browser keeps re-sampling
-     everything behind the card for as long as it's on screen, and on a
-     phone GPU that's the single most expensive thing on this page,
-     especially stacked over GlobalBackground's own blurred orbs. 10px
-     still reads clearly as frosted glass; 14px was paying for blur the
-     eye can't actually distinguish from 10px on a small card. */
+  /* Dialed to a middle ground: enough fill that the card reads clearly as
+     a distinct surface (text and inputs stay easy to read at a glance),
+     but still translucent enough that background color/light passes
+     through instead of the card looking like a solid opaque panel. */
+  background: linear-gradient(135deg, rgba(15,23,42,0.28) 0%, rgba(10,14,24,0.20) 100%);
   backdrop-filter: blur(10px) saturate(1.3);
   -webkit-backdrop-filter: blur(10px) saturate(1.3);
   padding: 2.5rem;

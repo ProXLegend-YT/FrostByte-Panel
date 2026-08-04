@@ -120,6 +120,12 @@
   height: min(95vw, 820px);
   pointer-events: none;
   opacity: 0.8;
+  /* Fades the lattice out toward its own center so the densest cluster of
+     lines doesn't sit directly behind the input fields competing for
+     attention — stays visible as an ambient shape around the card without
+     fighting the text you're trying to read/type over. */
+  mask-image: radial-gradient(circle at center, transparent 0%, transparent 15%, black 55%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 0%, transparent 15%, black 55%);
 }
 
 .frost-crystal-wrap svg {
@@ -392,10 +398,13 @@
 .frost-input {
   width: 100%;
   padding: 0.9rem 1rem 0.9rem 3rem;
-  /* Lighter, more translucent field so the glass card's own transparency
-     isn't undone by an opaque input sitting on top of it. */
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.09);
+  /* Slightly more visible border than the card itself, now that the card
+     fill is very low (5%) — otherwise, at this transparency, the input
+     boundaries nearly disappear into the card and it's hard to tell at a
+     glance where the tappable field actually is. Fill stays light so it
+     doesn't reintroduce the "solid card" look. */
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(148,163,184,0.22);
   border-radius: 12px;
   color: #f1f5f9;
   font-size: 0.95rem;

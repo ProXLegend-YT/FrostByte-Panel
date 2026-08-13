@@ -5,7 +5,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import axios from "axios";
-import { Snowflake, User, Lock } from "lucide-react";
+import { Snowflake, User, Lock, ShieldCheck, KeyRound } from "lucide-react";
 import "./Login.css";
 
 type Mode = "login" | "register";
@@ -16,6 +16,13 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // 2FA step — set once the password step succeeds and the account has
+  // 2FA enabled. Presence of tempToken is what switches the form over to
+  // the code-entry view below.
+  const [tempToken, setTempToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
 
   const { login } = useAuth();
   const { panelName, allowRegistration } = useSettings();
@@ -60,10 +67,33 @@ export default function Login() {
     try {
       const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
       const res = await axios.post(endpoint, { username, password });
+      if (res.data.requires2FA) {
+        setTempToken(res.data.tempToken);
+        setIsLoading(false);
+        return;
+      }
       login(res.data.token, res.data.user);
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.error || (mode === "login" ? "Login failed" : "Registration failed"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      const payload = useRecoveryCode
+        ? { tempToken, recoveryCode: twoFactorCode }
+        : { tempToken, code: twoFactorCode };
+      const res = await axios.post("/api/auth/2fa/verify-login", payload);
+      login(res.data.token, res.data.user);
+      navigate("/");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Verification failed");
     } finally {
       setIsLoading(false);
     }
@@ -137,6 +167,65 @@ export default function Login() {
 
         <div className="frost-card-shell">
           <div className="frost-card">
+          {tempToken ? (
+            <>
+              <h2 className="frost-solo-heading" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <ShieldCheck size={20} color="#5eead4" /> Two-Factor Verification
+              </h2>
+              <p className="frost-hint" style={{ marginTop: "-0.25rem", marginBottom: "1rem" }}>
+                {useRecoveryCode
+                  ? "Enter one of your recovery codes."
+                  : "Enter the 6-digit code from your authenticator app."}
+              </p>
+
+              <form onSubmit={handleVerifyTwoFactor} className="frost-form">
+                {error && <div className="frost-error">{error}</div>}
+
+                <div className="frost-input-group">
+                  {useRecoveryCode ? (
+                    <KeyRound className="frost-input-icon" size={17} strokeWidth={2} />
+                  ) : (
+                    <ShieldCheck className="frost-input-icon" size={17} strokeWidth={2} />
+                  )}
+                  <input
+                    type="text"
+                    inputMode={useRecoveryCode ? "text" : "numeric"}
+                    autoComplete="one-time-code"
+                    placeholder={useRecoveryCode ? "XXXXX-XXXXX" : "123456"}
+                    className="frost-input"
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value)}
+                    maxLength={useRecoveryCode ? 11 : 6}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="frost-submit" disabled={isLoading || !twoFactorCode}>
+                  {isLoading ? "Verifying..." : "Verify"}
+                </button>
+              </form>
+
+              <p className="frost-footnote">
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); setUseRecoveryCode(!useRecoveryCode); setTwoFactorCode(""); setError(""); }}
+                  style={{ color: "#5eead4" }}
+                >
+                  {useRecoveryCode ? "Use authenticator code instead" : "Use a recovery code instead"}
+                </a>
+                {" · "}
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); setTempToken(null); setTwoFactorCode(""); setError(""); setPassword(""); }}
+                  style={{ color: "#94a3b8" }}
+                >
+                  Back
+                </a>
+              </p>
+            </>
+          ) : (
+          <>
           {allowRegistration !== false ? (
             <div className="frost-tabs" role="tablist" aria-label="Authentication mode">
               <button
@@ -214,11 +303,13 @@ export default function Login() {
               )}
             </p>
           )}
+          </>
+          )}
           </div>
         </div>
       </div>
 
-      {isLoading && <LoadingOverlay message={mode === "login" ? "Authenticating..." : "Creating your account..."} />}
+      {isLoading && <LoadingOverlay message={tempToken ? "Verifying..." : (mode === "login" ? "Authenticating..." : "Creating your account...")} />}
     </div>
   );
 }

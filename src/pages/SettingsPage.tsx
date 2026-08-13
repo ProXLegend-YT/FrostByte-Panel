@@ -6,9 +6,10 @@ import { motion } from "framer-motion";
 import { Shield, User, Trash2, Layout, Upload, RefreshCw } from "lucide-react";
 import { ImageCropper } from "../components/ImageCropper";
 import { LoadingOverlay } from "../components/LoadingOverlay";
+import TwoFactorSettings from "../components/TwoFactorSettings";
 
 export default function SettingsPage() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, refreshUser } = useAuth();
   const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration, allowUserServerCreation, fetchSettings } = useSettings();
   const [users, setUsers] = useState<any[]>([]);
   const [username, setUsername] = useState("");
@@ -310,6 +311,8 @@ export default function SettingsPage() {
             </div>
           </form>
         </div>
+
+        <TwoFactorSettings enabled={!!user.twoFactorEnabled} onChanged={refreshUser} />
       </div>
 
       {isAdmin && (

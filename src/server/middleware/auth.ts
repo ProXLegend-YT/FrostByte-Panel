@@ -131,6 +131,15 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
 
+    // Reject scoped tokens outright here — e.g. the short-lived
+    // "2fa-pending" token minted mid-login only proves a password was
+    // correct, not that the second factor was verified, and must never be
+    // usable as a real session token on any authenticated route.
+    if (decoded.purpose) {
+      res.status(401).json({ error: "Invalid token" });
+      return;
+    }
+
     const { readJSON } = await import("../services/db.js");
     const users = await readJSON("users.json") || [];
     const user = users.find((u: any) => u.id === decoded.id);

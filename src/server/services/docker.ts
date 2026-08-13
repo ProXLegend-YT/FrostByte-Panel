@@ -370,6 +370,9 @@ export const attachContainerSocket = async (containerId: string, serverId: strin
                   link: `/servers/${serverId}`,
                 }).catch(() => {});
               }
+
+              const { notifyServerDiscord } = await import("./discord.js");
+              notifyServerDiscord(crashedServer, "server.crash", `Exited with code ${info.State.ExitCode}. Check the console for details.`).catch(() => {});
             }
           }
         } catch (inspectErr) {

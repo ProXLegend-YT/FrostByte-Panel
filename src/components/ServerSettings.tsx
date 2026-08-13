@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"; 
 import { LoadingOverlay } from "../components/LoadingOverlay";
-import { Trash2, AlertTriangle, User, Save, Globe, Cpu, MemoryStick, Bot, KeyRound, Terminal } from "lucide-react";
+import { Trash2, AlertTriangle, User, Save, Globe, Cpu, MemoryStick, Bot, KeyRound, Terminal, MessageSquare, Send, CheckCircle2 } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,12 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
   const [ipAlias, setIpAlias] = useState(server?.ipAlias || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingAlias, setIsSavingAlias] = useState(false);
+
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState(server?.discordWebhookUrl || "");
+  const [discordAlerts, setDiscordAlerts] = useState<string[]>(server?.discordAlerts || ["server.crash"]);
+  const [isSavingDiscord, setIsSavingDiscord] = useState(false);
+  const [isTestingDiscord, setIsTestingDiscord] = useState(false);
+  const [discordTestResult, setDiscordTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const [ramLimit, setRamLimit] = useState(server?.ram ?? 2);
   const [cpuLimit, setCpuLimit] = useState(server?.cpu ?? 100);
@@ -140,6 +146,37 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
       alert("Failed to update IP Alias");
     } finally {
       setIsSavingAlias(false);
+    }
+  };
+
+  const toggleDiscordAlert = (event: string) => {
+    setDiscordAlerts((prev) => prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]);
+  };
+
+  const handleSaveDiscordWebhook = async () => {
+    try {
+      setIsSavingDiscord(true);
+      setDiscordTestResult(null);
+      await axios.put(`/api/servers/${serverId}/discord-webhook`, { discordWebhookUrl, discordAlerts });
+      alert("Discord webhook settings saved.");
+    } catch (e: any) {
+      alert(e.response?.data?.error || "Failed to save Discord webhook settings.");
+    } finally {
+      setIsSavingDiscord(false);
+    }
+  };
+
+  const handleTestDiscordWebhook = async () => {
+    if (!discordWebhookUrl) return;
+    try {
+      setIsTestingDiscord(true);
+      setDiscordTestResult(null);
+      await axios.post(`/api/servers/${serverId}/discord-webhook/test`, { webhookUrl: discordWebhookUrl });
+      setDiscordTestResult({ success: true, message: "Test message sent — check your Discord channel." });
+    } catch (e: any) {
+      setDiscordTestResult({ success: false, message: e.response?.data?.error || "Failed to send test message." });
+    } finally {
+      setIsTestingDiscord(false);
     }
   };
 
@@ -312,6 +349,75 @@ export default function ServerSettings({ serverId, server }: { serverId: string,
                 >
                   <Save className="w-4 h-4 mr-2" /> Save
                 </button>
+              </div>
+            </div>
+
+            <div className="bg-black/40 backdrop-blur-sm border border-white/10 p-6 md:p-8 rounded-3xl shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative z-20 group hover:bg-black/35 transition-colors mb-8">
+              <h3 className="text-cyan-300 font-bold mb-2 flex items-center">
+                <MessageSquare className="w-5 h-5 mr-2" /> Discord Alerts
+              </h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                Send a Discord message when this server starts, stops, crashes, or finishes a backup.
+              </p>
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={discordWebhookUrl}
+                      onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      className="w-full bg-[#0a0a0c] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2 text-white transition-all shadow-inner outline-none font-mono text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={handleTestDiscordWebhook}
+                      disabled={!discordWebhookUrl || isTestingDiscord}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-zinc-300 font-medium rounded-xl border border-white/10 transition-all disabled:opacity-50 flex items-center whitespace-nowrap"
+                    >
+                      <Send className="w-4 h-4 mr-2" /> {isTestingDiscord ? "Sending..." : "Test"}
+                    </button>
+                    <button
+                      onClick={handleSaveDiscordWebhook}
+                      disabled={isSavingDiscord}
+                      className="px-6 py-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 font-medium rounded-xl border border-cyan-400/20 transition-all disabled:opacity-50 flex items-center"
+                    >
+                      <Save className="w-4 h-4 mr-2" /> Save
+                    </button>
+                  </div>
+                </div>
+
+                {discordTestResult && (
+                  <div className={`text-sm px-3 py-2 rounded-lg flex items-center gap-2 ${discordTestResult.success ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-red-500/10 text-red-300 border border-red-500/20"}`}>
+                    {discordTestResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                    {discordTestResult.message}
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Send an alert when...</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: "server.start", label: "Server starts" },
+                      { key: "server.stop", label: "Server stops" },
+                      { key: "server.crash", label: "Server crashes" },
+                      { key: "backup.create", label: "Backup completes" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => toggleDiscordAlert(opt.key)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          discordAlerts.includes(opt.key)
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                            : "bg-white/[0.02] border-white/10 text-zinc-500 hover:text-zinc-300"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 

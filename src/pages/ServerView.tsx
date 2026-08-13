@@ -17,8 +17,9 @@ import ScheduledTasks from "../components/ScheduledTasks";
 import SubUsersManager from "../components/SubUsersManager";
 import ServerSFTP from "../components/ServerSFTP";
 import { NotificationBell } from "../components/NotificationBell";
-import { Puzzle, Box, Network, Globe2, Clock } from "lucide-react";
+import { Puzzle, Box, Network, Globe2, Clock, TrendingUp } from "lucide-react";
 import { Settings } from "lucide-react";
+import ServerHistory from "../components/ServerHistory";
 
 
 export default function ServerView() {
@@ -87,6 +88,7 @@ export default function ServerView() {
   const tabs: any[] = [
     { name: "Terminal", path: `/servers/${id}`, exactPath: "", icon: <Terminal size={18} /> },
     { name: "File Manager", path: `/servers/${id}/files`, exactPath: "files", icon: <Folder size={18} /> },
+    { name: "History", path: `/servers/${id}/history`, exactPath: "history", icon: <TrendingUp size={18} /> },
     { name: "SFTP Details", path: `/servers/${id}/sftp`, exactPath: "sftp", icon: <Network size={18} /> },
     { name: "Sub-Users", path: `/servers/${id}/subusers`, exactPath: "subusers", icon: <Users size={18} /> },
   ];
@@ -305,6 +307,7 @@ export default function ServerView() {
              <Route path="/" element={<ServerConsole serverId={id!} server={server} />} />
              <Route path="/properties" element={<ServerProperties serverId={id!} />} />
              <Route path="/files" element={<FileManager serverId={id!} />} />
+             <Route path="/history" element={<ServerHistory serverId={id!} limitRam={server.ram} limitCpu={server.cpu} />} />
              <Route path="/sftp" element={<ServerSFTP serverId={id!} server={server} />} />
              <Route path="/subusers" element={<SubUsersManager serverId={id!} />} />
              <Route path="/settings" element={<ServerSettings serverId={id!} server={server} />} />

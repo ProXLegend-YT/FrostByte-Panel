@@ -25,6 +25,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [token]);
 
+  // Re-fetches just the /me payload without touching the token — used
+  // after actions that change account-level fields (like toggling 2FA)
+  // that the JWT itself doesn't carry, so the UI reflects the new state
+  // without forcing a full re-login.
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get("/api/auth/me");
+      setUser(res.data.user);
+    } catch { /* leave existing user state as-is on failure */ }
+  };
+
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
@@ -66,7 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const canCreateServers = isAdmin || !!user?.canCreateServers;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, isAdmin, canCreateServers }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, isAdmin, canCreateServers, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

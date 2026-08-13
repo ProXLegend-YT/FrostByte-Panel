@@ -5,9 +5,9 @@ const ACTIVITY_LOG_FILE = "activity_log.json";
 const MAX_ENTRIES = 2000; // keep the log bounded so it can't grow forever
 
 export type ActivityAction =
-  | "auth.login" | "auth.register"
+  | "auth.login" | "auth.register" | "auth.2fa_enable" | "auth.2fa_disable" | "auth.2fa_regenerate_codes"
   | "server.create" | "server.delete" | "server.start" | "server.stop" | "server.restart"
-  | "server.owner_change" | "server.version_change" | "server.resource_change"
+  | "server.owner_change" | "server.version_change" | "server.resource_change" | "server.discord_webhook_update"
   | "file.upload" | "file.delete" | "file.rename"
   | "backup.create" | "backup.delete" | "backup.restore"
   | "subuser.add" | "subuser.remove"
@@ -17,6 +17,7 @@ export type ActivityAction =
   | "scheduledTask.create" | "scheduledTask.update" | "scheduledTask.delete"
   | "scheduledTask.restart" | "scheduledTask.backup" | "scheduledTask.command"
   | "scheduledTask.stop" | "scheduledTask.start"
+  | "world.install" | "modpack.install"
   | "coins.grant" | "coins.deduct" | "store.purchase" | "store.item_create" | "store.item_update" | "store.item_delete";
 
 export interface ActivityEntry {

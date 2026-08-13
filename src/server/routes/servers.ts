@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { requireAuth, requireServerAccess } from "../middleware/auth.js";
-import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, updateOwner, updateIpAlias, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod, installWorld, installModpack, getScheduledTasks, createScheduledTask, updateScheduledTask, deleteScheduledTask } from "../controllers/servers.js";
+import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, getServerStatHistory, updateOwner, updateIpAlias, updateDiscordWebhook, testDiscordWebhook, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod, installWorld, installModpack, getScheduledTasks, createScheduledTask, updateScheduledTask, deleteScheduledTask } from "../controllers/servers.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -13,9 +13,12 @@ router.get("/", getServers);
 router.post("/", createServer);
 router.get("/:id", requireServerAccess(), getServer);
 router.get("/:id/stats", requireServerAccess(), getServerStats);
+router.get("/:id/stats/history", requireServerAccess(), getServerStatHistory);
 router.delete("/:id", requireServerAccess(), deleteServer);
 router.put("/:id/owner", requireServerAccess(), updateOwner);
 router.put("/:id/ipalias", requireServerAccess("settings"), updateIpAlias);
+router.put("/:id/discord-webhook", requireServerAccess("settings"), updateDiscordWebhook);
+router.post("/:id/discord-webhook/test", requireServerAccess("settings"), testDiscordWebhook);
 
 router.put("/:id/version", requireServerAccess("settings"), changeServerVersion);
 router.put("/:id/resources", requireServerAccess(), updateServerResources);

@@ -3,7 +3,7 @@ import { readJSON, writeJSON, updateJSON } from "../services/db.js";
 import { createServerContainer, startContainer, stopContainer, restartContainer, deleteContainer, getContainerStatus, sendContainerCommand, attachContainerSocket, getContainerStats } from "../services/docker.js";
 import { createSftpUser, deleteSftpUser } from "../services/sftp.js";
 import { logActivity } from "../services/activityLog.js";
-import { randomUUID as uuidv4 } from "crypto";
+import { randomUUID as uuidv4, createHash } from "crypto";
 import fs from "fs-extra";
 import path from "path";
 // NOTE: archiver is intentionally never statically imported here. Its newer
@@ -109,6 +109,30 @@ export const getServerStats = async (req: Request, res: Response) => {
   } else {
     res.json({ cpu: 0, ram: 0, disk: 0, limitRam: server.ram ? server.ram * 1024 : 1024, limitCpu: server.cpu || 100, limitDisk: server.disk || 10 });
   }
+};
+
+const VALID_RANGES = ["1h", "6h", "24h", "7d", "30d"];
+
+export const getServerStatHistory = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  const range = VALID_RANGES.includes(req.query.range as string) ? (req.query.range as any) : "6h";
+
+  const servers = await readJSON("servers.json") || [];
+  const server = servers.find((s: any) => s.id === id);
+  if (!server) return res.status(404).json({ error: "Server not found" });
+  if (user.role !== "admin" && user.role !== "owner" && server.owner !== user.id) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const { getStatHistory } = await import("../services/statsHistory.js");
+  const samples = await getStatHistory(id, range);
+  res.json({
+    range,
+    samples,
+    limitRam: server.ram ? server.ram * 1024 : 1024,
+    limitCpu: server.cpu || 100,
+  });
 };
 
 export const createServer = async (req: Request, res: Response) => {
@@ -337,6 +361,65 @@ export const updateIpAlias = async (req: Request, res: Response) => {
   res.json({ success: true });
 };
 
+const DISCORD_ALERT_EVENTS = ["server.start", "server.stop", "server.crash", "backup.create"];
+
+export const updateDiscordWebhook = async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const { id } = req.params;
+  const { discordWebhookUrl, discordAlerts } = req.body;
+
+  if (discordWebhookUrl) {
+    let parsed: URL;
+    try { parsed = new URL(discordWebhookUrl); } catch {
+      return res.status(400).json({ error: "That doesn't look like a valid URL." });
+    }
+    if (parsed.hostname !== "discord.com" && parsed.hostname !== "discordapp.com") {
+      return res.status(400).json({ error: "Webhook URL must be a discord.com webhook link." });
+    }
+  }
+  if (discordAlerts !== undefined) {
+    if (!Array.isArray(discordAlerts) || discordAlerts.some((e: any) => !DISCORD_ALERT_EVENTS.includes(e))) {
+      return res.status(400).json({ error: "Invalid alert event list." });
+    }
+  }
+
+  let notFound = false;
+  let forbidden = false;
+  await updateJSON<any[]>("servers.json", (current) => {
+    const servers = current || [];
+    const server = servers.find((s: any) => s.id === id);
+    if (!server) { notFound = true; return servers; }
+    if (user.role !== "admin" && user.role !== "owner" && server.owner !== user.id) {
+      forbidden = true;
+      return servers;
+    }
+    if (discordWebhookUrl !== undefined) server.discordWebhookUrl = discordWebhookUrl || undefined;
+    if (discordAlerts !== undefined) server.discordAlerts = discordAlerts;
+    return servers;
+  });
+
+  if (notFound) return res.status(404).json({ error: "Server not found" });
+  if (forbidden) return res.status(403).json({ error: "Forbidden" });
+
+  logActivity({ actorId: user.id, actorUsername: user.username, action: "server.discord_webhook_update", serverId: id });
+  res.json({ success: true });
+};
+
+export const testDiscordWebhook = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { webhookUrl } = req.body;
+  if (!webhookUrl) return res.status(400).json({ error: "webhookUrl is required." });
+
+  const servers = await readJSON("servers.json") || [];
+  const server = servers.find((s: any) => s.id === id);
+  if (!server) return res.status(404).json({ error: "Server not found" });
+
+  const { sendDiscordTestMessage } = await import("../services/discord.js");
+  const result = await sendDiscordTestMessage(webhookUrl, server.name || "This server");
+  if (!result.success) return res.status(502).json({ error: result.error });
+  res.json({ success: true });
+};
+
 export const deleteServer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -367,6 +450,15 @@ export const deleteServer = async (req: Request, res: Response) => {
       await fs.remove(serverDir);
     } catch (e) {
       console.error("Failed to remove server directory", e);
+    }
+
+    // Remove the server's resource-history file too — no point retaining
+    // months of CPU/RAM samples for a server that no longer exists.
+    try {
+      const { deleteStatHistory } = await import("../services/statsHistory.js");
+      await deleteStatHistory(id);
+    } catch (e) {
+      console.error("Failed to remove stats history", e);
     }
     
     await deleteSftpUser(id).catch(e => console.error("SFTP user deletion failed:", e));
@@ -407,6 +499,8 @@ export const startServer = async (req: Request, res: Response) => {
     }
     await attachContainerSocket(server.containerId, server.id);
     logActivity({ actorId: (req as any).user.id, actorUsername: (req as any).user.username, action: "server.start", target: server.name, serverId: id });
+    const { notifyServerDiscord } = await import("../services/discord.js");
+    notifyServerDiscord(server, "server.start").catch(() => {});
     res.json({ success: true });
   } catch (err: any) {
     console.error("Start server error:", err);
@@ -432,6 +526,8 @@ export const stopServer = async (req: Request, res: Response) => {
       }
     }
     logActivity({ actorId: (req as any).user.id, actorUsername: (req as any).user.username, action: "server.stop", target: server.name, serverId: id });
+    const { notifyServerDiscord } = await import("../services/discord.js");
+    notifyServerDiscord(server, "server.stop").catch(() => {});
     res.json({ success: true });
   } catch (err: any) {
     console.error("Stop server error:", err);
@@ -961,6 +1057,16 @@ export const createBackup = async (req: Request, res: Response) => {
             link: `/servers/${id}/backup`,
           });
         } catch { /* notification is best-effort — backup already succeeded */ }
+
+        try {
+          const servers = await readJSON("servers.json") || [];
+          const server = servers.find((s: any) => s.id === id);
+          if (server) {
+            const { notifyServerDiscord } = await import("../services/discord.js");
+            notifyServerDiscord(server, "backup.create", filename).catch(() => {});
+          }
+        } catch { /* best-effort, same as above */ }
+
         res.json({ success: true, filename });
       }
     });
@@ -1452,9 +1558,8 @@ interface MrpackIndex {
 }
 
 async function sha1File(filePath: string): Promise<string> {
-  const crypto = await import("crypto");
   const buf = await fs.readFile(filePath);
-  return crypto.createHash("sha1").update(buf).digest("hex");
+  return createHash("sha1").update(buf).digest("hex");
 }
 
 export const installModpack = async (req: Request, res: Response) => {

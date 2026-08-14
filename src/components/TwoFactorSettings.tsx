@@ -124,7 +124,7 @@ export default function TwoFactorSettings({ enabled, onChanged }: { enabled: boo
 
         <form onSubmit={confirmSetup} className="max-w-md">
           {error && <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">{error}</div>}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               required
               value={confirmCode}
@@ -134,12 +134,12 @@ export default function TwoFactorSettings({ enabled, onChanged }: { enabled: boo
               maxLength={6}
               placeholder="123456"
               autoFocus
-              className="flex-1 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white font-mono transition-all shadow-inner outline-none"
+              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white font-mono transition-all shadow-inner outline-none"
             />
             <button
               type="submit"
               disabled={loading || confirmCode.length !== 6}
-              className="bg-cyan-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] active:scale-[0.98] whitespace-nowrap"
+              className="w-full sm:w-auto bg-cyan-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] active:scale-[0.98] whitespace-nowrap"
             >
               {loading ? "Verifying..." : "Verify & Enable"}
             </button>
@@ -162,7 +162,7 @@ export default function TwoFactorSettings({ enabled, onChanged }: { enabled: boo
         <h3 className="text-lg font-semibold text-white mb-4">Disable two-factor authentication</h3>
         <form onSubmit={handleDisable} className="max-w-md">
           {error && <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">{error}</div>}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               required
               value={disablePassword}
@@ -170,12 +170,12 @@ export default function TwoFactorSettings({ enabled, onChanged }: { enabled: boo
               type="password"
               placeholder="Confirm your password"
               autoFocus
-              className="flex-1 bg-white/[0.03] border border-white/10 focus:border-red-500 focus:ring-1 focus:ring-red-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none"
+              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-red-500 focus:ring-1 focus:ring-red-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none"
             />
             <button
               type="submit"
               disabled={loading}
-              className="bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 text-red-300 font-semibold px-6 py-2.5 rounded-xl border border-red-500/30 transition-all active:scale-[0.98] whitespace-nowrap"
+              className="w-full sm:w-auto bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 text-red-300 font-semibold px-6 py-2.5 rounded-xl border border-red-500/30 transition-all active:scale-[0.98] whitespace-nowrap"
             >
               {loading ? "Disabling..." : "Disable"}
             </button>

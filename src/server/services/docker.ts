@@ -196,9 +196,35 @@ export const stopContainer = async (containerId: string) => {
     return;
   }
   markExpectedStop(containerId);
+  // Real (non-sandbox) containers previously got zero console feedback on
+  // stop — sandbox mode always emitted a message, but the real path went
+  // straight to container.stop() with nothing surfaced to anyone watching
+  // the console. From the user's side this looked exactly like "nothing
+  // happens when I stop the server," even though the stop itself worked.
+  const serverIdForLog = await resolveServerIdFromContainerId(containerId);
+  if (serverIdForLog) {
+    io.to(`server_${serverIdForLog}`).emit("log", `[System] Stopping server...\r\n`);
+  }
   const container = docker.getContainer(containerId);
   await container.stop();
+  if (serverIdForLog) {
+    io.to(`server_${serverIdForLog}`).emit("log", `[System] Server stopped.\r\n`);
+  }
 };
+
+/** Looks up which server owns a given container ID — used only for
+ * emitting console messages tied to a serverId, since stopContainer only
+ * receives the containerId from its caller. */
+async function resolveServerIdFromContainerId(containerId: string): Promise<string | null> {
+  try {
+    const { readJSON } = await import("./db.js");
+    const servers = (await readJSON("servers.json")) || [];
+    const server = servers.find((s: any) => s.containerId === containerId);
+    return server?.id || null;
+  } catch {
+    return null;
+  }
+}
 
 export const restartContainer = async (containerId: string) => {
   if (isSandbox) {
@@ -320,66 +346,84 @@ export const attachContainerSocket = async (containerId: string, serverId: strin
   }
   try {
     const container = docker.getContainer(containerId);
-    if (!activeStreams[containerId]) {
-      const stream = await container.attach({ stream: true, stdout: true, stderr: true, stdin: true });
-      activeStreams[containerId] = stream;
-      stream.on('data', (chunk) => {
-        io.to(`server_${serverId}`).emit("log", chunk.toString());
-      });
-      stream.on('end', async () => {
-        delete activeStreams[containerId];
 
-        const wasExpected = expectedStops.delete(containerId);
-        if (wasExpected) return;
-
-        // Stream ended without us having asked for a stop — likely a crash.
-        // Give the daemon a moment to record the exit, then check.
-        try {
-          await new Promise((r) => setTimeout(r, 1500));
-          const info = await container.inspect();
-          if (info.State && !info.State.Running && info.State.ExitCode !== 0) {
-            // Surface this in the console itself, not just as a toast —
-            // someone actively watching the console when a crash happens
-            // should see a clear reason, not just the stream going quiet.
-            io.to(`server_${serverId}`).emit(
-              "log",
-              `[System Error] Container exited unexpectedly with code ${info.State.ExitCode}.\r\n`
-            );
-
-            const { updateJSON, readJSON } = await import("./db.js");
-            let crashedServer: any = null;
-            await updateJSON("servers.json", (current: any[]) => {
-              const servers = current || [];
-              const server = servers.find((s: any) => s.id === serverId);
-              if (server) {
-                server.status = "offline";
-                crashedServer = server;
-              }
-              return servers;
-            });
-
-            if (crashedServer) {
-              const { notifyUser } = await import("./notifications.js");
-              const recipients = [crashedServer.owner, ...(crashedServer.subUsers || []).map((su: any) => su.userId)].filter(Boolean);
-              for (const uid of recipients) {
-                notifyUser(uid, {
-                  type: "error",
-                  title: "Server stopped unexpectedly",
-                  message: `"${crashedServer.name}" exited with code ${info.State.ExitCode}. Check the console for details.`,
-                  serverId,
-                  link: `/servers/${serverId}`,
-                }).catch(() => {});
-              }
-
-              const { notifyServerDiscord } = await import("./discord.js");
-              notifyServerDiscord(crashedServer, "server.crash", `Exited with code ${info.State.ExitCode}. Check the console for details.`).catch(() => {});
-            }
-          }
-        } catch (inspectErr) {
-          console.error("Crash-detection inspect failed:", inspectErr);
-        }
-      });
+    // Always tear down and reattach fresh, rather than skipping when a
+    // cache entry already exists for this containerId. The previous
+    // "only attach if not already attached" check assumed a cached stream
+    // was still live, but a restart gives the container a genuinely new
+    // process with a new stdout — the *container ID* stays the same, but
+    // the old attached stream doesn't automatically follow the new
+    // process. If the old stream's 'end' event hadn't fired yet (or ever)
+    // by the time restart/start ran again, attachContainerSocket would
+    // silently do nothing: no new listener, no forwarded output — which
+    // is exactly "nothing shows up when I start/restart the server."
+    const existing = activeStreams[containerId];
+    if (existing) {
+      try {
+        existing.removeAllListeners();
+        if (typeof (existing as any).destroy === "function") (existing as any).destroy();
+      } catch { /* best-effort cleanup of a possibly-already-dead stream */ }
+      delete activeStreams[containerId];
     }
+
+    const stream = await container.attach({ stream: true, stdout: true, stderr: true, stdin: true });
+    activeStreams[containerId] = stream;
+    stream.on('data', (chunk) => {
+      io.to(`server_${serverId}`).emit("log", chunk.toString());
+    });
+    stream.on('end', async () => {
+      delete activeStreams[containerId];
+
+      const wasExpected = expectedStops.delete(containerId);
+      if (wasExpected) return;
+
+      // Stream ended without us having asked for a stop — likely a crash.
+      // Give the daemon a moment to record the exit, then check.
+      try {
+        await new Promise((r) => setTimeout(r, 1500));
+        const info = await container.inspect();
+        if (info.State && !info.State.Running && info.State.ExitCode !== 0) {
+          // Surface this in the console itself, not just as a toast —
+          // someone actively watching the console when a crash happens
+          // should see a clear reason, not just the stream going quiet.
+          io.to(`server_${serverId}`).emit(
+            "log",
+            `[System Error] Container exited unexpectedly with code ${info.State.ExitCode}.\r\n`
+          );
+
+          const { updateJSON, readJSON } = await import("./db.js");
+          let crashedServer: any = null;
+          await updateJSON("servers.json", (current: any[]) => {
+            const servers = current || [];
+            const server = servers.find((s: any) => s.id === serverId);
+            if (server) {
+              server.status = "offline";
+              crashedServer = server;
+            }
+            return servers;
+          });
+
+          if (crashedServer) {
+            const { notifyUser } = await import("./notifications.js");
+            const recipients = [crashedServer.owner, ...(crashedServer.subUsers || []).map((su: any) => su.userId)].filter(Boolean);
+            for (const uid of recipients) {
+              notifyUser(uid, {
+                type: "error",
+                title: "Server stopped unexpectedly",
+                message: `"${crashedServer.name}" exited with code ${info.State.ExitCode}. Check the console for details.`,
+                serverId,
+                link: `/servers/${serverId}`,
+              }).catch(() => {});
+            }
+
+            const { notifyServerDiscord } = await import("./discord.js");
+            notifyServerDiscord(crashedServer, "server.crash", `Exited with code ${info.State.ExitCode}. Check the console for details.`).catch(() => {});
+          }
+        }
+      } catch (inspectErr) {
+        console.error("Crash-detection inspect failed:", inspectErr);
+      }
+    });
   } catch(e) {
     console.error("Attach error", e);
   }

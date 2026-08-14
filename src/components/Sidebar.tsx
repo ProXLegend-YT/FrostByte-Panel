@@ -1,18 +1,35 @@
 import { Link, useLocation } from "react-router-dom";
-import { Server, LayoutDashboard, Plus, LogOut, X, Settings, Globe, Key } from "lucide-react";
+import { Server, LayoutDashboard, Plus, LogOut, X, Settings, Globe, Key, Coins } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { user, logout, isAdmin } = useAuth();
   const { panelName, panelLogo } = useSettings();
+
+  // Store link only shows once the coin economy is actually turned on —
+  // a link to an empty/disabled store would just be confusing chrome for
+  // panels that don't use this feature. Fetched once on mount; toggling
+  // the setting takes effect for a user on their next page load, which is
+  // an acceptable tradeoff against adding this to the global settings
+  // context and re-rendering every consumer of it for a rarely-toggled flag.
+  const [coinsEnabled, setCoinsEnabled] = useState(false);
+  useEffect(() => {
+    axios.get("/api/system/coins/settings").then((res) => setCoinsEnabled(!!res.data.enabled)).catch(() => {});
+  }, []);
   
   const links = [
     { name: "Dashboard", path: "/", icon: <LayoutDashboard size={18} /> },
     { name: "Servers", path: "/servers", icon: <Server size={18} /> },
   ];
+
+  if (coinsEnabled) {
+    links.push({ name: "Store", path: "/store", icon: <Coins size={18} /> });
+  }
 
   if (isAdmin) {
     links.push({ name: "Create Server", path: "/servers/create", icon: <Plus size={18} /> });

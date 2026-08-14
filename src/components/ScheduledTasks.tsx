@@ -294,7 +294,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleCreate}
                 disabled={saving}

@@ -55,15 +55,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <h1 className="text-lg font-bold tracking-tight text-white truncate">{panelName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationBell />
+            {/* Reserves space for the fixed-position NotificationBell so
+                the hamburger button doesn't sit underneath it. */}
+            <div className="w-9 h-9" aria-hidden="true" />
             <button onClick={() => setMobileOpen(true)} className="p-2 text-zinc-400 hover:text-white bg-white/5 rounded-lg transition-colors">
               <Menu size={20} />
             </button>
           </div>
         </div>
 
-        {/* Desktop Header (notification bell only — sidebar carries branding) */}
-        <div className="hidden md:flex items-center justify-end px-6 py-3 flex-shrink-0 relative z-30">
+        {/* Desktop Header — sidebar carries branding, so this row is just spacing for the fixed bell below on md+ screens */}
+        <div className="hidden md:flex items-center justify-end px-6 py-3 flex-shrink-0 relative z-30" />
+
+        {/* Notification bell — a single mount for the whole layout, fixed
+            in the top-right corner of the viewport, so it sits over both
+            the mobile and desktop header rows without needing to be
+            rendered twice. Each mount of NotificationBell opens its own
+            Socket.IO connection; having the mobile and desktop headers
+            each render their own instance (CSS `hidden` doesn't stop
+            React from mounting the hidden one) meant two live sockets
+            doing the same job on every page, all the time — this is what
+            "the whole panel feels laggy" was actually coming from, not
+            animation weight. One mount now, always. */}
+        <div className="fixed top-3 right-3 md:top-3 md:right-6 z-40">
           <NotificationBell />
         </div>
         

@@ -3,10 +3,11 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { motion } from "framer-motion";
-import { Shield, User, Trash2, Layout, Upload, RefreshCw } from "lucide-react";
+import { Shield, User, Trash2, Layout, Upload, RefreshCw, Coins } from "lucide-react";
 import { ImageCropper } from "../components/ImageCropper";
 import { LoadingOverlay } from "../components/LoadingOverlay";
 import TwoFactorSettings from "../components/TwoFactorSettings";
+import CoinEconomySettings from "../components/CoinEconomySettings";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin, refreshUser } = useAuth();
@@ -33,6 +34,10 @@ export default function SettingsPage() {
     canCreateServers: false, maxServers: 1, maxRamGb: 4, maxCpuPercent: 200, maxDiskGb: 10,
   });
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
+  const [coinGrantUserId, setCoinGrantUserId] = useState<string | null>(null);
+  const [coinGrantAmount, setCoinGrantAmount] = useState("");
+  const [coinGrantReason, setCoinGrantReason] = useState("");
+  const [isAdjustingCoins, setIsAdjustingCoins] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -197,6 +202,33 @@ export default function SettingsPage() {
     });
   };
 
+  const openCoinGrant = (u: any) => {
+    if (coinGrantUserId === u.id) {
+      setCoinGrantUserId(null);
+      return;
+    }
+    setCoinGrantUserId(u.id);
+    setCoinGrantAmount("");
+    setCoinGrantReason("");
+  };
+
+  const submitCoinAdjustment = async (userId: string, direction: "grant" | "deduct") => {
+    const amount = Number(coinGrantAmount);
+    if (!amount || amount <= 0) return;
+    try {
+      setIsAdjustingCoins(true);
+      const endpoint = direction === "grant" ? "/api/system/coins/grant" : "/api/system/coins/deduct";
+      await axios.post(endpoint, { userId, amount, reason: coinGrantReason || undefined });
+      setCoinGrantUserId(null);
+      setCoinGrantAmount("");
+      setCoinGrantReason("");
+    } catch (e: any) {
+      alert(e.response?.data?.error || "Failed to adjust balance.");
+    } finally {
+      setIsAdjustingCoins(false);
+    }
+  };
+
   const saveServerPermissions = async (id: string) => {
     setIsSavingPermissions(true);
     try {
@@ -290,7 +322,7 @@ export default function SettingsPage() {
                 placeholder="Current password"
                 className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
               />
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input 
                   required 
                   minLength={8}
@@ -298,12 +330,12 @@ export default function SettingsPage() {
                   onChange={e => setNewPassword(e.target.value)} 
                   type="password" 
                   placeholder="New password (min 8 chars)"
-                  className="flex-1 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
+                  className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
                 />
                 <button 
                   type="submit" 
                   disabled={isChangingPassword}
-                  className="bg-cyan-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] active:scale-[0.98] whitespace-nowrap"
+                  className="w-full sm:w-auto bg-cyan-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] active:scale-[0.98] whitespace-nowrap"
                 >
                   {isChangingPassword ? "Updating..." : "Update"}
                 </button>
@@ -338,15 +370,15 @@ export default function SettingsPage() {
               className="flex-1 max-w-md"
             >
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Panel Name</label>
-              <div className="flex gap-3 mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 <input 
                   required 
                   value={newPanelName} 
                   onChange={e => setNewPanelName(e.target.value)} 
                   type="text" 
-                  className="flex-1 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
+                  className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
                 />
-                <button disabled={isSavingSettings} type="submit" className="bg-white text-zinc-900 hover:bg-zinc-200 font-semibold px-6 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98] whitespace-nowrap disabled:opacity-50">
+                <button disabled={isSavingSettings} type="submit" className="w-full sm:w-auto bg-white text-zinc-900 hover:bg-zinc-200 font-semibold px-6 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98] whitespace-nowrap disabled:opacity-50">
                   {isSavingSettings ? "Saving..." : "Save"}
                 </button>
               </div>
@@ -654,7 +686,7 @@ export default function SettingsPage() {
                <div className="space-y-3">
                  {users.map(u => (
                    <div key={u.id} className="flex flex-col p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-colors">
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <div>
                           <p className="font-medium text-white flex items-center">
                             {u.username}
@@ -664,10 +696,15 @@ export default function SettingsPage() {
                             Role: {u.role}
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {u.id !== user.id && u.role !== 'admin' && u.role !== 'owner' && (
                             <button onClick={() => openServerPermissions(u)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${u.canCreateServers ? 'text-emerald-300 bg-emerald-400/10 hover:bg-emerald-400/20' : 'text-zinc-400 bg-white/[0.04] hover:bg-white/[0.08]'}`}>
                               {permissionsUserId === u.id ? "Cancel" : u.canCreateServers ? "Server Access ✓" : "Server Access"}
+                            </button>
+                          )}
+                          {u.id !== user.id && (
+                            <button onClick={() => openCoinGrant(u)} className="px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-400/10 hover:bg-amber-400/20 rounded-lg transition-colors flex items-center gap-1">
+                              <Coins size={13} /> {coinGrantUserId === u.id ? "Cancel" : "Coins"}
                             </button>
                           )}
                           {u.id !== user.id && (
@@ -689,6 +726,43 @@ export default function SettingsPage() {
                           )}
                         </div>
                       </div>
+                      {coinGrantUserId === u.id && (
+                        <div className="mt-4 pt-4 border-t border-white/5">
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              value={coinGrantAmount}
+                              onChange={(e) => setCoinGrantAmount(e.target.value)}
+                              placeholder="Amount"
+                              className="w-full sm:w-32 bg-white/[0.03] border border-white/10 focus:border-amber-500 rounded-lg px-3 py-1.5 text-white text-sm outline-none"
+                            />
+                            <input
+                              type="text"
+                              value={coinGrantReason}
+                              onChange={(e) => setCoinGrantReason(e.target.value)}
+                              placeholder="Reason (optional)"
+                              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-amber-500 rounded-lg px-3 py-1.5 text-white text-sm outline-none"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => submitCoinAdjustment(u.id, "grant")}
+                                disabled={isAdjustingCoins || !coinGrantAmount}
+                                className="flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/25 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                              >
+                                + Grant
+                              </button>
+                              <button
+                                onClick={() => submitCoinAdjustment(u.id, "deduct")}
+                                disabled={isAdjustingCoins || !coinGrantAmount}
+                                className="flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/25 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                              >
+                                − Deduct
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {permissionsUserId === u.id && (
                         <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
                           <p className="text-xs text-zinc-500">
@@ -733,14 +807,7 @@ export default function SettingsPage() {
                               </div>
                             </div>
                           )}
-                          <div className="flex gap-2">
-                            <button
-                              disabled={isSavingPermissions}
-                              onClick={() => saveServerPermissions(u.id)}
-                              className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
-                            >
-                              {isSavingPermissions ? "Saving..." : "Save Access"}
-                            </button>
+                          <div className="flex flex-wrap gap-2">
                             {u.hasServerPermissionOverride && (
                               <button
                                 disabled={isSavingPermissions}
@@ -778,6 +845,8 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {isAdmin && <CoinEconomySettings />}
 
       {isAdmin && (
         <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-6 md:p-8 shadow-xl mt-8">

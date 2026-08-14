@@ -85,6 +85,18 @@ export default function ServerView() {
     </div>
   );
 
+  // Every tab below used to be gated purely on server.type (PAPER, FORGE,
+  // FABRIC, etc.) — vocabulary that only makes sense for Minecraft. A
+  // Discord bot server's `type` is "NODE" or "PYTHON", which matched none
+  // of those checks, so it fell through to the *default* tab set instead
+  // of an empty one — meaning it still got "Properties" (a
+  // server.properties editor, a Minecraft-only file) and other
+  // Minecraft-shaped tabs that make no sense for a bot. Gating on
+  // server.game (set at creation time from gameDefinitions.ts, e.g.
+  // "discord-bot") instead of guessing from `type` fixes that at the root.
+  const isDiscordBot = server?.game === "discord-bot";
+  const isMinecraft = !isDiscordBot && ["PAPER", "FORGE", "FABRIC", "VANILLA", "VELOCITY", "BUNGEECORD", "WATERFALL"].includes(server?.type?.toUpperCase() || "");
+
   const tabs: any[] = [
     { name: "Terminal", path: `/servers/${id}`, exactPath: "", icon: <Terminal size={18} /> },
     { name: "File Manager", path: `/servers/${id}/files`, exactPath: "files", icon: <Folder size={18} /> },
@@ -94,23 +106,25 @@ export default function ServerView() {
   ];
 
   const isProxy = ["VELOCITY", "BUNGEECORD", "WATERFALL"].includes(server?.type?.toUpperCase() || "");
-  
-  if (!isProxy) {
-    tabs.splice(1, 0, { name: "Properties", path: `/servers/${id}/properties`, exactPath: "properties", icon: <Sliders size={18} /> });
-  }
 
-  if (server?.type === "PAPER") {
-    tabs.push({ name: "Plugins", path: `/servers/${id}/plugins`, exactPath: "plugins", icon: <Puzzle size={18} /> });
-  }
+  if (isMinecraft) {
+    if (!isProxy) {
+      tabs.splice(1, 0, { name: "Properties", path: `/servers/${id}/properties`, exactPath: "properties", icon: <Sliders size={18} /> });
+    }
 
-  if (server?.type === "FORGE" || server?.type === "FABRIC") {
-    tabs.push({ name: "Mods", path: `/servers/${id}/mods`, exactPath: "mods", icon: <Box size={18} /> });
-  }
+    if (server?.type === "PAPER") {
+      tabs.push({ name: "Plugins", path: `/servers/${id}/plugins`, exactPath: "plugins", icon: <Puzzle size={18} /> });
+    }
 
-  // World installs make sense for any non-proxy Minecraft-family server,
-  // not just modded ones — vanilla/Paper servers have worlds too.
-  if (!isProxy && ["PAPER", "FORGE", "FABRIC", "VANILLA"].includes(server?.type?.toUpperCase() || "")) {
-    tabs.push({ name: "Worlds", path: `/servers/${id}/worlds`, exactPath: "worlds", icon: <Globe2 size={18} /> });
+    if (server?.type === "FORGE" || server?.type === "FABRIC") {
+      tabs.push({ name: "Mods", path: `/servers/${id}/mods`, exactPath: "mods", icon: <Box size={18} /> });
+    }
+
+    // World installs make sense for any non-proxy Minecraft-family server,
+    // not just modded ones — vanilla/Paper servers have worlds too.
+    if (!isProxy && ["PAPER", "FORGE", "FABRIC", "VANILLA"].includes(server?.type?.toUpperCase() || "")) {
+      tabs.push({ name: "Worlds", path: `/servers/${id}/worlds`, exactPath: "worlds", icon: <Globe2 size={18} /> });
+    }
   }
 
   tabs.push(

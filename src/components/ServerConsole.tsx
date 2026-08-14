@@ -98,11 +98,10 @@ const STYLES = `
 @keyframes qx-blink      { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
 @keyframes qx-spin       { to { transform:rotate(360deg); } }
 @keyframes qx-scan       { 0% { top:-2px; } 100% { top:100%; } }
-@keyframes qx-drift      { 0% { background-position:0 0; } 100% { background-position:48px 48px; } }
-@keyframes qx-border-run { 0% { background-position:0% 50%; } 100% { background-position:200% 50%; } }
+@keyframes qx-drift      { 0% { transform:translate3d(0,0,0); } 100% { transform:translate3d(-48px,-48px,0); } }
 @keyframes qx-dot-bounce { 0%,80%,100% { transform:scale(.5); opacity:.3; } 40% { transform:scale(1); opacity:1; } }
 @keyframes qx-tail-in    { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
-@keyframes qx-shimmer    { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+@keyframes qx-shimmer    { 0% { transform:translate3d(-100%,0,0); } 100% { transform:translate3d(100%,0,0); } }
 @keyframes qx-rec        { 0%,100% { opacity:1; } 50% { opacity:.35; } }
 
 .qx-enter        { animation: qx-fade-up .55s cubic-bezier(.22,1,.36,1) both; }
@@ -116,12 +115,18 @@ const STYLES = `
   border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px;
 }
 
+/* This grid used to animate background-position, which forces the browser
+   to repaint the entire panel every frame, forever — the same underlying
+   issue fixed elsewhere in the app (Login card, etc.). It isn't currently
+   applied anywhere in this file's JSX, but kept fixed here as a
+   compositor-only transform so it stays safe if it's used again later. */
 .qx-grid-bg {
   background-image:
     linear-gradient(rgba(52,211,153,.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(52,211,153,.028) 1px, transparent 1px);
   background-size: 48px 48px;
   animation: qx-drift 16s linear infinite;
+  will-change: transform;
 }
 
 .qx-spin-slow {
@@ -147,12 +152,20 @@ const STYLES = `
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(90deg, transparent, rgba(52,211,153,.14), transparent);
-  background-size: 200% 100%;
-  animation: qx-shimmer 2.8s linear infinite;
   opacity: 0;
   transition: opacity .3s;
 }
-.qx-run:hover::before { opacity: 1; }
+/* Was animating background-position continuously (via qx-shimmer)
+   whenever hovered — same repaint-per-frame cost as the grid above, just
+   scoped to hover state instead of always-on. Now a translate3d sweep on
+   the same element, compositor-only. Only runs while :hover is active
+   (the animation is declared on the hover rule itself), so it's not even
+   ticking at all the rest of the time. */
+.qx-run:hover::before {
+  opacity: 1;
+  animation: qx-shimmer 2.8s linear infinite;
+  will-change: transform;
+}
 .qx-run:hover { box-shadow: 0 4px 22px -4px rgba(52,211,153,.4); }
 .qx-run:active { transform: scale(.96); }
 
@@ -165,6 +178,11 @@ const STYLES = `
 
 .qx-telemetry-row { transition: background .25s ease; }
 .qx-telemetry-row:hover { background: rgba(255,255,255,.02); }
+
+@media (prefers-reduced-motion: reduce) {
+  .qx-grid-bg { animation: none; }
+  .qx-run:hover::before { animation: none; opacity: 0; }
+}
 `;
 
 /* ═══════════════════════════════════════════════════════
@@ -754,20 +772,25 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
 
 
 
-            {/* Players */}
-            <section
-              className={`flex-1 xl:min-h-0 qx-panel rounded-[24px] relative overflow-hidden flex flex-col ${
-                ready ? "qx-enter" : "opacity-0"
-              }`}
-              style={{ animationDelay: "300ms" }}
-            >
-              
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
-              <span className="absolute top-2.5 right-3 z-10 qx-mono text-[9px] px-2 py-0.5 rounded-sm bg-emerald-400/10 text-emerald-300 border border-emerald-400/20 tabular-nums">
-                {players.length} online
-              </span>
-              <PlayerManager serverId={serverId} players={players} />
-            </section>
+            {/* Players — Discord bots don't have "players", so this panel
+                (which polls console output for a "players online:" line
+                that will never appear for a bot process) is hidden rather
+                than shown empty, which would just look broken. */}
+            {server?.game !== "discord-bot" && (
+              <section
+                className={`flex-1 xl:min-h-0 qx-panel rounded-[24px] relative overflow-hidden flex flex-col ${
+                  ready ? "qx-enter" : "opacity-0"
+                }`}
+                style={{ animationDelay: "300ms" }}
+              >
+                
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
+                <span className="absolute top-2.5 right-3 z-10 qx-mono text-[9px] px-2 py-0.5 rounded-sm bg-emerald-400/10 text-emerald-300 border border-emerald-400/20 tabular-nums">
+                  {players.length} online
+                </span>
+                <PlayerManager serverId={serverId} players={players} />
+              </section>
+            )}
           </aside>
 
           {/* ═══════════ RIGHT — CONSOLE ═══════════ */}
@@ -889,30 +912,35 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
             )}
 
             {/* ── Quick commands ── */}
-            <div className="px-3 md:px-4 pt-2.5 pb-1 flex items-center gap-1.5 overflow-x-auto qx-scroll relative z-10 border-t border-white/[0.05] bg-black/20 backdrop-blur-md">
-              <span className="qx-display text-[8px] font-bold uppercase tracking-[0.22em] text-slate-600 shrink-0 mr-1">
-                Quick
-              </span>
-              {QUICK_COMMANDS.map((q) => (
-                <button
-                  key={q.cmd}
-                  onClick={() => {
-                    setCommand(q.cmd);
-                    inputRef.current?.focus();
-                  }}
-                  className={`qx-mono text-[10px] px-2.5 py-1 rounded-sm border whitespace-nowrap transition-all duration-200 hover:-translate-y-px active:translate-y-0 ${
-                    q.danger
-                      ? "text-rose-400/80 border-rose-500/20 hover:border-rose-400/50 hover:bg-rose-500/10 hover:text-rose-300"
-                      : "text-slate-400 border-white/[0.08] hover:border-emerald-400/40 hover:bg-emerald-400/[0.07] hover:text-emerald-300"
-                  }`}
-                >
-                  {q.label}
-                </button>
-              ))}
-              <span className="qx-mono text-[9px] text-slate-700 ml-auto shrink-0 hidden md:block">
-                press <kbd className="text-slate-500 border border-white/10 rounded-sm px-1">/</kbd> to focus
-              </span>
-            </div>
+            {/* These are Minecraft RCON commands and don't apply to a
+                Discord bot process (no such command surface exists), so
+                the bar is hidden rather than shown non-functional. */}
+            {server?.game !== "discord-bot" && (
+              <div className="px-3 md:px-4 pt-2.5 pb-1 flex items-center gap-1.5 overflow-x-auto qx-scroll relative z-10 border-t border-white/[0.05] bg-black/20 backdrop-blur-md">
+                <span className="qx-display text-[8px] font-bold uppercase tracking-[0.22em] text-slate-600 shrink-0 mr-1">
+                  Quick
+                </span>
+                {QUICK_COMMANDS.map((q) => (
+                  <button
+                    key={q.cmd}
+                    onClick={() => {
+                      setCommand(q.cmd);
+                      inputRef.current?.focus();
+                    }}
+                    className={`qx-mono text-[10px] px-2.5 py-1 rounded-sm border whitespace-nowrap transition-all duration-200 hover:-translate-y-px active:translate-y-0 ${
+                      q.danger
+                        ? "text-rose-400/80 border-rose-500/20 hover:border-rose-400/50 hover:bg-rose-500/10 hover:text-rose-300"
+                        : "text-slate-400 border-white/[0.08] hover:border-emerald-400/40 hover:bg-emerald-400/[0.07] hover:text-emerald-300"
+                    }`}
+                  >
+                    {q.label}
+                  </button>
+                ))}
+                <span className="qx-mono text-[9px] text-slate-700 ml-auto shrink-0 hidden md:block">
+                  press <kbd className="text-slate-500 border border-white/10 rounded-sm px-1">/</kbd> to focus
+                </span>
+              </div>
+            )}
 
             {/* ── Command bar ── */}
             <form

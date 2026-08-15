@@ -55,8 +55,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <h1 className="text-lg font-bold tracking-tight text-white truncate">{panelName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Reserves space for the fixed-position NotificationBell so
-                the hamburger button doesn't sit underneath it. */}
+            {/* Reserves space for the fixed-position NotificationBell,
+                which renders at right-14 on mobile (see below) so it sits
+                to the left of this hamburger button instead of on top of
+                it — the two were overlapping in the same corner before. */}
             <div className="w-9 h-9" aria-hidden="true" />
             <button onClick={() => setMobileOpen(true)} className="p-2 text-zinc-400 hover:text-white bg-white/5 rounded-lg transition-colors">
               <Menu size={20} />
@@ -68,16 +70,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="hidden md:flex items-center justify-end px-6 py-3 flex-shrink-0 relative z-30" />
 
         {/* Notification bell — a single mount for the whole layout, fixed
-            in the top-right corner of the viewport, so it sits over both
-            the mobile and desktop header rows without needing to be
-            rendered twice. Each mount of NotificationBell opens its own
-            Socket.IO connection; having the mobile and desktop headers
-            each render their own instance (CSS `hidden` doesn't stop
-            React from mounting the hidden one) meant two live sockets
-            doing the same job on every page, all the time — this is what
-            "the whole panel feels laggy" was actually coming from, not
-            animation weight. One mount now, always. */}
-        <div className="fixed top-3 right-3 md:top-3 md:right-6 z-40">
+            in the viewport so it sits over both the mobile and desktop
+            header rows without needing to be rendered twice (each mount
+            opens its own Socket.IO connection — two mounts meant two live
+            sockets doing the same job on every page). On mobile it sits
+            at right-14, clear of the hamburger button at right-3/4; on
+            desktop there's no hamburger to avoid, so it moves to right-6. */}
+        <div className="fixed top-3 right-14 md:right-6 z-40">
           <NotificationBell />
         </div>
         

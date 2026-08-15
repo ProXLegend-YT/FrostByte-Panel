@@ -200,3 +200,23 @@ body {
   background-size: 40px 40px;
   animation: qx-grid-scroll 12s linear infinite;
 }
+
+/* Performance mode — a device-local (not panel-wide) preference toggled
+   from Settings, for phones with weaker GPUs where backdrop-filter blur
+   is genuinely expensive. This app uses backdrop-blur-* across most
+   cards, modals, and headers (dozens of instances, deliberately, for the
+   glass aesthetic); on a strong GPU that's cheap, but on budget/older
+   hardware compositing many simultaneous blurred layers is a real,
+   measurable frame-rate cost — the same interface can feel buttery on one
+   phone and sluggish on another for exactly this reason. Rather than
+   hand-editing dozens of files to remove blur (error-prone, and wrong for
+   users on capable devices), this class neutralizes every Tailwind
+   backdrop-blur-* utility at once via a single high-specificity override,
+   swapping blur for a flat, slightly darker fill that still reads as a
+   distinct "glass" surface without the compositing cost. Toggled by
+   adding/removing this class on <body>. */
+body.qx-perf-mode [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(10, 10, 14, 0.82) !important;
+}

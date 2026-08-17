@@ -260,7 +260,11 @@ export const startLocalServer = async (id: string, serverData: any) => {
         if (await fs.pathExists(path.join(serverPath, f))) { entry = f; break; }
       }
       logMessage(`Starting Node.js application (${entry}) on port ${serverData.port || 3000}...`);
-      child = spawn(nodeBin, [entry], {
+      // Local mode has no cgroup to enforce serverData.ram, unlike the Docker
+      // path. --max-old-space-size caps V8's heap so a runaway app OOMs
+      // itself instead of the whole host (and the panel process with it).
+      const nodeMemoryMb = Math.round((serverData.ram || 1) * 1024);
+      child = spawn(nodeBin, [`--max-old-space-size=${nodeMemoryMb}`, entry], {
         cwd: serverPath,
         env: { ...process.env, PORT: String(serverData.port || 3000), SERVER_PORT: String(serverData.port || 3000), NODE_ENV: "production" },
         stdio: ["pipe", "pipe", "pipe"],
@@ -397,6 +401,15 @@ export const getLocalServerStatus = async (id: string) => {
   };
 };
 
+// ps reports %cpu per-core (a single busy process on a 4-core box can read
+// up to ~400%), but defaultCpu in gameDefinitions.ts is a Docker cgroup
+// quota normalized against one core. Comparing the two directly (as the UI
+// does) makes a perfectly healthy local-mode server look like it's blowing
+// through its cap. We normalize by core count here so the number the panel
+// displays means the same thing in both runtime modes.
+import os from "os";
+const CPU_CORES = Math.max(os.cpus()?.length || 1, 1);
+
 export const getLocalServerStats = async (id: string): Promise<{ cpu: number; ram: number; disk: number }> => {
   const child = processes.get(id);
   if (!child?.pid) return { cpu: 0, ram: 0, disk: 0 };
@@ -405,7 +418,8 @@ export const getLocalServerStats = async (id: string): Promise<{ cpu: number; ra
     const lines = stdout.trim().split("\n");
     if (lines.length > 1) {
       const [cpuStr, rssStr] = lines[1].trim().split(/\s+/);
-      return { cpu: parseFloat(cpuStr) || 0, ram: (parseInt(rssStr) || 0) / 1024, disk: 2.1 };
+      const rawCpu = parseFloat(cpuStr) || 0;
+      return { cpu: rawCpu / CPU_CORES, ram: (parseInt(rssStr) || 0) / 1024, disk: 2.1 };
     }
   } catch { /* process may have just exited between .has() and ps */ }
   return { cpu: 0, ram: 0, disk: 0 };

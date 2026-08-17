@@ -5,8 +5,22 @@ import crypto from "crypto";
 import { io } from "../../../server.js"; // Import socket for logs
 import { readJSON } from "./db.js";
 import { getGameDefinition, getDockerImageFor } from "../gameDefinitions.js";
+import * as local from "./local.js";
 
-export const isSandbox = !fs.existsSync("/var/run/docker.sock") && process.platform !== "win32";
+// RUNTIME_MODE=local is an install-time choice (see install.sh) for hosts
+// that don't permit nested Docker containers — some managed VPS platforms
+// block the kernel-level networking operations Docker's bridge driver
+// needs, even for a process running as root inside the box, because
+// allowing it could let one tenant affect others sharing the physical
+// host. On such a host, isSandbox alone doesn't help: Docker's daemon
+// itself is present and briefly reachable, it simply can't finish
+// initializing its network layer. RUNTIME_MODE lets an operator route
+// around that at setup time and get real running servers via native child
+// processes instead, rather than being silently stuck in demo/sandbox
+// behavior forever with no way to actually run anything.
+export const isLocalMode = (process.env.RUNTIME_MODE || "docker").toLowerCase() === "local";
+
+export const isSandbox = !isLocalMode && !fs.existsSync("/var/run/docker.sock") && process.platform !== "win32";
 
 export const docker = new Docker({ socketPath: process.platform === 'win32' ? '//./pipe/docker_engine' : '/var/run/docker.sock' });
 
@@ -28,6 +42,7 @@ export const getVersions = async (type: string = "PAPER", gameId: string = "mine
 const DOCKER_IMAGE = "itzg/minecraft-server";
 
 export const createServerContainer = async (serverData: any) => {
+  if (isLocalMode) return local.createLocalServer(serverData);
   if (isSandbox) {
     mockState[serverData.id] = false;
     return "mock-container-id-" + serverData.id;
@@ -134,7 +149,7 @@ function buildResourceLimits(serverData: any): { Memory?: number; NanoCpus?: num
  * after creation.
  */
 export const updateContainerResources = async (containerId: string, ram?: number, cpu?: number) => {
-  if (isSandbox) return;
+  if (isSandbox || isLocalMode) return; // local mode enforces no hard resource caps — see local.ts header comment
 
   const update: { Memory?: number; MemorySwap?: number; NanoCpus?: number } = {};
   if (ram !== undefined && Number.isFinite(ram) && ram > 0) {
@@ -152,7 +167,22 @@ export const updateContainerResources = async (containerId: string, ram?: number
   await container.update(update);
 };
 
+/** Local-mode container "IDs" are local-<serverId> — this strips the
+ * prefix and loads the full server record local.ts's functions need
+ * (unlike dockerode, which only ever needs the container ID itself). */
+async function loadServerForLocalId(containerId: string): Promise<{ id: string; server: any } | null> {
+  const id = containerId.replace(/^local-/, "");
+  const servers = (await readJSON("servers.json")) || [];
+  const server = servers.find((s: any) => s.id === id);
+  return server ? { id, server } : null;
+}
+
 export const startContainer = async (containerId: string) => {
+  if (isLocalMode) {
+    const found = await loadServerForLocalId(containerId);
+    if (found) await local.startLocalServer(found.id, found.server);
+    return;
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     mockState[id] = true;
@@ -189,6 +219,11 @@ export const startContainer = async (containerId: string) => {
 };
 
 export const stopContainer = async (containerId: string) => {
+  if (isLocalMode) {
+    const found = await loadServerForLocalId(containerId);
+    if (found) await local.stopLocalServer(found.id);
+    return;
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     mockState[id] = false;
@@ -227,6 +262,11 @@ async function resolveServerIdFromContainerId(containerId: string): Promise<stri
 }
 
 export const restartContainer = async (containerId: string) => {
+  if (isLocalMode) {
+    const found = await loadServerForLocalId(containerId);
+    if (found) await local.restartLocalServer(found.id, found.server);
+    return;
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     mockState[id] = true;
@@ -239,6 +279,11 @@ export const restartContainer = async (containerId: string) => {
 };
 
 export const deleteContainer = async (containerId: string) => {
+  if (isLocalMode) {
+    const found = await loadServerForLocalId(containerId);
+    if (found) await local.deleteLocalServer(found.id);
+    return;
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     delete mockState[id];
@@ -258,6 +303,10 @@ export const deleteContainer = async (containerId: string) => {
 };
 
 export const getContainerStatus = async (containerId: string) => {
+  if (isLocalMode) {
+    const id = containerId.replace(/^local-/, "");
+    return local.getLocalServerStatus(id);
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     const isRunning = mockState[id] || false;
@@ -273,6 +322,10 @@ export const getContainerStatus = async (containerId: string) => {
 };
 
 export const getContainerStats = async (containerId: string) => {
+  if (isLocalMode) {
+    const id = containerId.replace(/^local-/, "");
+    return local.getLocalServerStats(id);
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     if (!mockState[id]) return { cpu: 0, ram: 0, disk: 0 };
@@ -341,6 +394,13 @@ export const getContainerLogs = async (containerId: string): Promise<string> => 
 const activeStreams: Record<string, NodeJS.ReadWriteStream> = {};
 
 export const attachContainerSocket = async (containerId: string, serverId: string) => {
+  if (isLocalMode) {
+    // No-op by design: startLocalServer already wires the child process's
+    // stdout/stderr directly to io.to(`server_${id}`).emit("log", ...) the
+    // moment it spawns — there's no separate container to "attach" to
+    // after the fact the way a Docker container's stream needs attaching.
+    return;
+  }
   if (isSandbox) {
     return;
   }
@@ -430,6 +490,11 @@ export const attachContainerSocket = async (containerId: string, serverId: strin
 };
 
 export const sendContainerCommand = async (containerId: string, command: string) => {
+  if (isLocalMode) {
+    const id = containerId.replace(/^local-/, "");
+    await local.sendLocalServerCommand(id, command);
+    return;
+  }
   if (isSandbox) {
     const id = containerId.replace("mock-container-id-", "");
     io.to(`server_${id}`).emit("log", `> ${command}\r\n`);

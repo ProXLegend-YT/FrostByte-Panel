@@ -150,9 +150,48 @@ install_dependencies() {
         fi
       fi
 
-      if ! command_exists docker; then
-        log "Installing Docker..."
-        curl -fsSL https://get.docker.com | $SUDO sh || warn "Docker install failed — you can skip this if you don't need containerized game servers here."
+      command_exists node || { fail "Node.js installation failed."; return 1; }
+      command_exists npm  || { fail "npm installation failed."; return 1; }
+
+      # ------------------------------------------------------------------
+      # STEP: Select server execution runtime engine
+      #
+      # Docker is the default and gives real per-server isolation (memory
+      # and CPU limits enforced by the container runtime itself, one
+      # server literally can't see another's filesystem). But some managed
+      # VPS/PaaS platforms run this box itself inside a restricted outer
+      # container and block the kernel operations Docker's own networking
+      # setup needs — Docker installs fine and the daemon even starts, but
+      # it fails the moment it tries to create its NAT/bridge networking,
+      # with a permission error that has nothing to do with anything this
+      # installer or the panel can fix. On a host like that, real running
+      # servers are only possible via the local process engine below.
+      echo ""
+      echo -e "${W}STEP: SELECT SERVER EXECUTION RUNTIME ENGINE${NC}"
+      echo "Choose how server processes (Minecraft, Node.js, Python) execute on this host:"
+      echo ""
+      echo -e "  [ 1 ] ${W}Docker Container Sandbox${NC} ${GREEN}(Recommended — real isolation)${NC}"
+      echo "        Isolated per-server Docker containers with enforced memory & CPU limits."
+      echo ""
+      echo -e "  [ 2 ] ${YELLOW}Local Process Engine${NC} ${G}(Direct host execution — for hosts that block nested Docker)${NC}"
+      echo "        Runs servers as native child processes. No container isolation between"
+      echo "        servers, but works on platforms (some managed VPS/PaaS hosts) where"
+      echo "        Docker's own networking setup is blocked by the platform itself."
+      echo ""
+      read -rp "Enter selection [1 or 2, default: 1]: " RUNTIME_CHOICE
+      RUNTIME_CHOICE=${RUNTIME_CHOICE:-1}
+
+      if [[ "$RUNTIME_CHOICE" == "2" ]]; then
+        RUNTIME_MODE="local"
+        ok "Local Process Engine selected — servers will run as native host processes."
+        warn "Minecraft servers need Java on this host. The panel can auto-provision a JRE on first start if none is found, but installing one now avoids that delay:"
+        warn "  ${SUDO} apt-get install -y openjdk-21-jre-headless"
+      else
+        RUNTIME_MODE="docker"
+        if ! command_exists docker; then
+          log "Installing Docker..."
+          curl -fsSL https://get.docker.com | $SUDO sh || warn "Docker install failed — you can skip this if you don't need containerized game servers here."
+        fi
       fi
     else
       fail "Need root or sudo to install system packages. Re-run as root or with a sudo-capable user."
@@ -594,6 +633,22 @@ do_install() {
   fi
   if [[ -z "${PANEL_DOMAIN:-}" ]]; then
     warn "No domain set — if you access the panel from a different address than ${ORIGIN} (e.g. a different IP, or 'localhost' vs your LAN IP), update ALLOWED_ORIGINS in .env to match exactly, then 'pm2 restart frostbyte-panel'."
+  fi
+
+  # RUNTIME_MODE may be unset here if the runtime-engine prompt earlier was
+  # skipped (e.g. this install already had root and no sudo branch ran) —
+  # default to docker, the same default the prompt itself uses, rather than
+  # writing an empty value that server.ts would then have to guess about.
+  RUNTIME_MODE="${RUNTIME_MODE:-docker}"
+  if grep -q "^RUNTIME_MODE=" .env 2>/dev/null; then
+    sed -i.bak "s#^RUNTIME_MODE=.*#RUNTIME_MODE=${RUNTIME_MODE}#" .env && rm -f .env.bak
+  else
+    echo "RUNTIME_MODE=${RUNTIME_MODE}" >> .env
+  fi
+  if [[ "$RUNTIME_MODE" == "local" ]]; then
+    ok "RUNTIME_MODE set to local — servers will run as native host processes."
+  else
+    ok "RUNTIME_MODE set to docker."
   fi
 
   log "Building the panel..."

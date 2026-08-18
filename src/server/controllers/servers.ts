@@ -1239,8 +1239,22 @@ export const installPlugin = async (req: Request, res: Response) => {
       responseType: 'stream',
       headers: {
          'User-Agent': 'React-Minecraft-Panel/1.0'
-      }
+      },
+      validateStatus: (status) => status < 400,
     });
+
+    // Some sources (Spiget in particular) return HTTP 200 with an HTML
+    // "download this manually" page instead of a real error when a plugin
+    // can't be auto-fetched (premium resources, gated downloads, etc). A
+    // silently-written HTML file looked identical to a successful install
+    // before this check — verify the response actually looks like a jar
+    // before we trust it and report success.
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    if (contentType.includes("text/html")) {
+      return res.status(422).json({
+        error: `This plugin couldn't be downloaded automatically (the source returned a webpage instead of a file). It may require manual download from the plugin's page.`,
+      });
+    }
 
     const writer = fs.createWriteStream(filePath);
     response.data.pipe(writer);
@@ -1249,6 +1263,24 @@ export const installPlugin = async (req: Request, res: Response) => {
       writer.on('finish', resolve);
       writer.on('error', reject);
     });
+
+    // Belt-and-suspenders: even with a non-HTML content-type, confirm the
+    // file that landed on disk is actually a jar (starts with the ZIP/JAR
+    // magic bytes "PK") and has a sane minimum size, before reporting
+    // success. Catches truncated downloads and mislabeled error bodies.
+    const stat = await fs.stat(filePath);
+    if (stat.size < 100) {
+      await fs.remove(filePath).catch(() => {});
+      return res.status(422).json({ error: "Download failed: the file received was empty or too small to be a valid plugin jar." });
+    }
+    const fd = await fs.open(filePath, "r");
+    const magicBuffer = Buffer.alloc(2);
+    await fd.read(magicBuffer, 0, 2, 0);
+    await fd.close();
+    if (magicBuffer.toString("ascii") !== "PK") {
+      await fs.remove(filePath).catch(() => {});
+      return res.status(422).json({ error: "Download failed: the file received doesn't look like a valid plugin jar. This plugin may not support automatic installation." });
+    }
 
     try {
       const { notifyUser } = await import("../services/notifications.js");
@@ -1579,6 +1611,19 @@ export const installModpack = async (req: Request, res: Response) => {
   // modpack install can touch dozens of files at once — stop first.
   const servers = await readJSON("servers.json") || [];
   const server = servers.find((s: any) => s.id === id);
+
+  // A modpack's mods only load if the matching mod loader (Fabric/Forge)
+  // is actually running the server. Installing one onto a Vanilla or
+  // Paper server would silently drop mod files into a folder the server
+  // never reads — no error, no mods, no indication anything's wrong.
+  const modLoaderTypes = ["FORGE", "FABRIC"];
+  if (!modLoaderTypes.includes(server?.type?.toUpperCase() || "")) {
+    if (req.file) await fs.remove(req.file.path).catch(() => {});
+    return res.status(400).json({
+      error: `Modpacks require a Forge or Fabric server (this server is "${server?.type || "unknown"}"). Create a new Forge/Fabric server, or recreate this one as one of those types, before installing a modpack.`,
+    });
+  }
+
   if (server?.containerId) {
     const status = await getContainerStatus(server.containerId);
     if (status?.State?.Running) {

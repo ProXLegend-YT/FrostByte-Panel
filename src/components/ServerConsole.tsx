@@ -39,6 +39,10 @@ interface ServerConsoleProps {
     version?: string;
     [key: string]: unknown;
   };
+  // Optional: lets a parent (ServerView) mirror the live online-players
+  // list this component already tracks internally, so a separate Players
+  // tab can reuse it without opening a second socket connection.
+  onPlayersChange?: (players: { name: string }[]) => void;
 }
 
 type LogLevel = "info" | "warn" | "error";
@@ -405,7 +409,7 @@ function Clock() {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════ */
 
-export default function ServerConsole({ serverId, server }: ServerConsoleProps) {
+export default function ServerConsole({ serverId, server, onPlayersChange }: ServerConsoleProps) {
   const [logs, setLogs] = useState<string[]>([]);
   const [command, setCommand] = useState("");
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
@@ -495,6 +499,7 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
             ch = true;
           }
         }
+        if (ch) onPlayersChange?.(u);
         return ch ? u : prev;
       });
 
@@ -973,7 +978,7 @@ export default function ServerConsole({ serverId, server }: ServerConsoleProps) 
               <button
                 type="submit"
                 disabled={!command.trim()}
-                className="qx-run qx-display px-6 md:px-7 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-200 bg-emerald-400/[0.12] border border-emerald-400/30 disabled:opacity-30 disabled:pointer-events-none"
+                className="qx-run qx-display shrink-0 px-4 sm:px-6 md:px-7 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-200 bg-emerald-400/[0.12] border border-emerald-400/30 disabled:opacity-30 disabled:pointer-events-none whitespace-nowrap"
               >
                 Execute
               </button>

@@ -11,6 +11,7 @@ import ServerSettings from "../components/ServerSettings";
 import ServerProperties from "../components/ServerProperties";
 import ServerBackups from "../components/ServerBackups";
 import PlayitTunnel from "../components/PlayitTunnel";
+import PlayerManager from "../components/PlayerManager";
 import PluginManager from "../components/PluginManager";
 import ModManager from "../components/ModManager";
 import WorldManager from "../components/WorldManager";
@@ -27,6 +28,7 @@ import { useSettings } from "../context/SettingsContext";
 export default function ServerView() {
   const { id } = useParams();
   const { enablePlayit } = useSettings();
+  const [onlinePlayers, setOnlinePlayers] = useState<{ name: string }[]>([]);
   const [server, setServer] = useState<any>(null);
   const [totalSystemRam, setTotalSystemRam] = useState<number>(0);
   const [showRamWarning, setShowRamWarning] = useState(false);
@@ -121,6 +123,13 @@ export default function ServerView() {
 
     if (server?.type === "FORGE" || server?.type === "FABRIC") {
       tabs.push({ name: "Mods", path: `/servers/${id}/mods`, exactPath: "mods", icon: <Box size={18} /> });
+    }
+
+    // Op/kick/ban commands act on a player who's connected to a game
+    // server directly — proxies (Velocity/BungeeCord/Waterfall) route
+    // traffic to backend servers and don't hold that player state.
+    if (!isProxy) {
+      tabs.push({ name: "Players", path: `/servers/${id}/players`, exactPath: "players", icon: <Users size={18} /> });
     }
 
     // World installs make sense for any non-proxy Minecraft-family server,
@@ -325,7 +334,8 @@ export default function ServerView() {
 <div className="flex-1 relative flex flex-col min-h-0 bg-transparent">
         <div className="flex-1 flex flex-col relative overflow-hidden bg-transparent min-h-0">
            <Routes>
-             <Route path="/" element={<ServerConsole serverId={id!} server={server} />} />
+             <Route path="/" element={<ServerConsole serverId={id!} server={server} onPlayersChange={setOnlinePlayers} />} />
+             <Route path="/players" element={<PlayerManager serverId={id!} players={onlinePlayers} />} />
              <Route path="/properties" element={<ServerProperties serverId={id!} />} />
              <Route path="/files" element={<FileManager serverId={id!} />} />
              <Route path="/history" element={<ServerHistory serverId={id!} limitRam={server.ram} limitCpu={server.cpu} />} />

@@ -4,7 +4,24 @@ import axios from "axios";
 
 export default function PlayerManager({ serverId, players }: { serverId: string, players: {name: string}[] }) {
   const [loadingAction, setLoadingAction] = useState<{player: string, action: string} | null>(null);
-  
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshList = async () => {
+    setRefreshing(true);
+    try {
+      // The player list is populated by parsing console output (join/leave
+      // messages, and the "list" command's response). If this tab is opened
+      // before the Console tab has ever connected, there's no data yet —
+      // running "list" here won't help until a console socket is active.
+      // This just re-sends the command in case one already is.
+      await axios.post(`/api/servers/${serverId}/command`, { command: "list" });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTimeout(() => setRefreshing(false), 800);
+    }
+  };
+
   const handleAction = async (player: string, action: string, command: string) => {
     try {
       setLoadingAction({ player, action });
@@ -18,10 +35,17 @@ export default function PlayerManager({ serverId, players }: { serverId: string,
 
   return (
     <div id="player-manager" className="relative h-full flex flex-col min-h-0">
-      <div className="px-4 pt-3.5 pb-1 shrink-0 relative z-10">
+      <div className="px-4 pt-3.5 pb-1 shrink-0 relative z-10 flex items-center justify-between">
         <h2 className="qx-display text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">
           Players
         </h2>
+        <button
+          onClick={refreshList}
+          disabled={refreshing}
+          className="qx-mono text-[9px] text-slate-500 hover:text-cyan-300 uppercase tracking-widest disabled:opacity-40 transition-colors"
+        >
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       <div className="relative z-10 overflow-y-auto flex-1 qx-scroll touch-auto overscroll-y-auto mt-2" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -29,6 +53,9 @@ export default function PlayerManager({ serverId, players }: { serverId: string,
           <div className="p-6 text-center flex flex-col items-center justify-center h-full opacity-50">
             <Users className="w-8 h-8 mb-2 text-slate-500" />
             <span className="qx-mono text-[10px] text-slate-500 uppercase tracking-widest">No players online</span>
+            <span className="qx-mono text-[9px] text-slate-600 uppercase tracking-widest mt-2 max-w-[220px]">
+              Open the Terminal tab at least once this session so the panel can track who's connected.
+            </span>
           </div>
         ) : (
           players.map((player) => (

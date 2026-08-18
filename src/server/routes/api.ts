@@ -25,6 +25,7 @@ router.get("/settings", async (req, res) => {
     // caps) stay behind auth below, no reason to expose host capacity
     // details to an unauthenticated visitor.
     allowUserServerCreation: settings.allowUserServerCreation === true,
+    enablePlayit: settings.enablePlayit === true,
   });
 });
 

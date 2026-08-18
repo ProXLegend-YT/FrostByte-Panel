@@ -378,6 +378,14 @@ credentials-file: ${HOME}/.cloudflared/${tunnel_id}.json
 ingress:
   - hostname: ${domain}
     service: http://localhost:${backend_port}
+    originRequest:
+      # cloudflared defaults to HTTP/2 on the connection to the origin.
+      # Socket.IO's websocket upgrade handshake doesn't survive that
+      # reliably through the tunnel — it looks like a normal connection at
+      # first, then repeatedly drops with "transport close" / "websocket
+      # error" once traffic starts flowing. Forcing HTTP/1.1 here is what
+      # keeps the upgrade (and the console's live socket) stable.
+      http2Origin: false
   - service: http_status:404
 EOF
 

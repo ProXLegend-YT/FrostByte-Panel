@@ -475,6 +475,7 @@ router.put("/settings", async (req, res) => {
   const {
     panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration,
     allowUserServerCreation, defaultMaxServers, defaultMaxRamGb, defaultMaxCpuPercent, defaultMaxDiskGb,
+    enablePlayit,
   } = req.body;
   const settings = await readJSON("settings.json") || {};
   if (panelName !== undefined) settings.panelName = panelName || "FrostByte Panel";
@@ -482,6 +483,7 @@ router.put("/settings", async (req, res) => {
   if (panelBackgroundImage !== undefined) settings.panelBackgroundImage = panelBackgroundImage;
   if (panelBackgroundBlur !== undefined) settings.panelBackgroundBlur = panelBackgroundBlur;
   if (allowRegistration !== undefined) settings.allowRegistration = allowRegistration;
+  if (enablePlayit !== undefined) settings.enablePlayit = !!enablePlayit;
 
   // Panel-wide default for whether normal users can create servers, plus the
   // shared quota applied to anyone who hasn't been individually configured

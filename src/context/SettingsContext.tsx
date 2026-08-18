@@ -10,6 +10,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [panelBackgroundBlur, setPanelBackgroundBlur] = useState<number>(10);
   const [allowRegistration, setAllowRegistration] = useState<boolean>(true);
   const [allowUserServerCreation, setAllowUserServerCreation] = useState<boolean>(false);
+  const [enablePlayit, setEnablePlayit] = useState<boolean>(false);
 
   const fetchSettings = async () => {
     try {
@@ -20,6 +21,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       if (res.data.panelBackgroundBlur !== undefined) setPanelBackgroundBlur(res.data.panelBackgroundBlur);
       if (res.data.allowRegistration !== undefined) setAllowRegistration(res.data.allowRegistration);
       if (res.data.allowUserServerCreation !== undefined) setAllowUserServerCreation(res.data.allowUserServerCreation);
+      if (res.data.enablePlayit !== undefined) setEnablePlayit(res.data.enablePlayit);
     } catch (e) {}
   };
 
@@ -35,6 +37,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       panelBackgroundBlur, setPanelBackgroundBlur, 
       allowRegistration, setAllowRegistration,
       allowUserServerCreation, setAllowUserServerCreation,
+      enablePlayit, setEnablePlayit,
       fetchSettings 
     }}>
       {children}

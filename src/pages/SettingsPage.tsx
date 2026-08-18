@@ -11,7 +11,7 @@ import CoinEconomySettings from "../components/CoinEconomySettings";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin, refreshUser } = useAuth();
-  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration, allowUserServerCreation, fetchSettings } = useSettings();
+  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration, allowUserServerCreation, enablePlayit, fetchSettings } = useSettings();
   const [users, setUsers] = useState<any[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [newPanelName, setNewPanelName] = useState(panelName);
   const [newAllowRegistration, setNewAllowRegistration] = useState(allowRegistration);
   const [newAllowUserServerCreation, setNewAllowUserServerCreation] = useState(allowUserServerCreation);
+  const [newEnablePlayit, setNewEnablePlayit] = useState(enablePlayit);
   const [globalServerDefaults, setGlobalServerDefaults] = useState({ defaultMaxServers: 1, defaultMaxRamGb: 4, defaultMaxCpuPercent: 200, defaultMaxDiskGb: 10 });
   const [isSavingGlobalDefaults, setIsSavingGlobalDefaults] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -486,6 +487,31 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 )}
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newEnablePlayit}
+                      onChange={async (e) => {
+                        const val = e.target.checked;
+                        setNewEnablePlayit(val);
+                        try {
+                          await axios.put("/api/system/settings", { enablePlayit: val });
+                          fetchSettings();
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-zinc-300 block">Enable Playit.gg Tunnel</span>
+                    <span className="text-xs text-zinc-500">Adds a "Playit Tunnel" tab on every server for exposing it via playit.gg. Requires the playit-cli binary installed on this host.</span>
+                  </div>
+                </label>
               </div>
             </div>
 

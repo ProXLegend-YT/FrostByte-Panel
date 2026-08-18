@@ -6,6 +6,7 @@ import { logActivity } from "../services/activityLog.js";
 import { randomUUID as uuidv4, createHash } from "crypto";
 import fs from "fs-extra";
 import path from "path";
+import { getPlayitStatus, startPlayitTunnel, stopPlayitTunnel, resetPlayitTunnel } from "../services/playit.js";
 // NOTE: archiver is intentionally never statically imported here. Its newer
 // major versions are published as ESM-only, and esbuild compiles a static
 // `import` into a `require()` call in the CJS bundle this project builds —
@@ -1877,5 +1878,56 @@ export const deleteScheduledTask = async (req: Request, res: Response) => {
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to delete scheduled task." });
+  }
+};
+
+export const getPlayitTunnelStatus = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const status = getPlayitStatus(id);
+    res.json(status);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to get Playit tunnel status." });
+  }
+};
+
+export const startPlayitTunnelHandler = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  try {
+    const servers = await readJSON("servers.json") || [];
+    const server = servers.find((s: any) => s.id === id);
+    if (!server) return res.status(404).json({ error: "Server not found." });
+
+    const localPort = server.port || 25565;
+    const result = await startPlayitTunnel(id, localPort);
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "playit.start", target: server.name, serverId: id });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to start Playit tunnel." });
+  }
+};
+
+export const stopPlayitTunnelHandler = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  try {
+    const result = await stopPlayitTunnel(id);
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "playit.stop", target: id, serverId: id });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to stop Playit tunnel." });
+  }
+};
+
+export const resetPlayitTunnelHandler = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = (req as any).user;
+  try {
+    const result = await resetPlayitTunnel(id);
+    logActivity({ actorId: user.id, actorUsername: user.username, action: "playit.reset", target: id, serverId: id });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to reset Playit tunnel." });
   }
 };

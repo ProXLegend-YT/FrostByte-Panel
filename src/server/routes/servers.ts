@@ -1,13 +1,24 @@
 import express from "express";
 import path from "path";
 import { requireAuth, requireServerAccess } from "../middleware/auth.js";
-import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, getServerStatHistory, updateOwner, updateIpAlias, updateDiscordWebhook, testDiscordWebhook, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod, installWorld, installModpack, getScheduledTasks, createScheduledTask, updateScheduledTask, deleteScheduledTask } from "../controllers/servers.js";
+import { readJSON } from "../services/db.js";
+import { getServers, createServer, getServer, deleteServer, startServer, stopServer, restartServer, changeServerVersion, updateServerResources, updateBotConfig, getFiles, uploadFile, deleteFile, renameFile, saveFileContent, sendCommand, getServerStats, getServerStatHistory, updateOwner, updateIpAlias, updateDiscordWebhook, testDiscordWebhook, getBackups, createBackup, downloadBackup, deleteBackup, unzipFile, zipFiles, installPlugin, installMod, installWorld, installModpack, getScheduledTasks, createScheduledTask, updateScheduledTask, deleteScheduledTask, getPlayitTunnelStatus, startPlayitTunnelHandler, stopPlayitTunnelHandler, resetPlayitTunnelHandler } from "../controllers/servers.js";
 import multer from "multer";
 
 const router = express.Router();
 const upload = multer({ dest: path.join(process.cwd(), ".data/temp/") });
 
 router.use(requireAuth);
+
+// Playit is an admin-gated feature. Even with the tab hidden client-side,
+// someone could still call these endpoints directly — this blocks that.
+const requirePlayitEnabled = async (req: any, res: any, next: any) => {
+  const settings = await readJSON("settings.json") || {};
+  if (settings.enablePlayit !== true) {
+    return res.status(403).json({ error: "Playit tunnel is disabled by the panel administrator." });
+  }
+  next();
+};
 
 router.get("/", getServers);
 router.post("/", createServer);
@@ -215,6 +226,11 @@ router.post("/:id/modpack/install", requireServerAccess("files"), upload.single(
 
 router.get("/:id/schedule", requireServerAccess("schedule"), getScheduledTasks);
 router.post("/:id/schedule", requireServerAccess("schedule"), createScheduledTask);
+
+router.get("/:id/playit", requireServerAccess(), requirePlayitEnabled, getPlayitTunnelStatus);
+router.post("/:id/playit/start", requireServerAccess("settings"), requirePlayitEnabled, startPlayitTunnelHandler);
+router.post("/:id/playit/stop", requireServerAccess("settings"), requirePlayitEnabled, stopPlayitTunnelHandler);
+router.post("/:id/playit/reset", requireServerAccess("settings"), requirePlayitEnabled, resetPlayitTunnelHandler);
 router.put("/:id/schedule/:taskId", requireServerAccess("schedule"), updateScheduledTask);
 router.delete("/:id/schedule/:taskId", requireServerAccess("schedule"), deleteScheduledTask);
 export default router;

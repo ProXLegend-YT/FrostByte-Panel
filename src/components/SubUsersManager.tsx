@@ -115,7 +115,7 @@ export default function SubUsersManager({ serverId }: SubUsersManagerProps) {
               setSelectedPermissions([]);
               setShowAddModal(true);
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-all shadow-lg shadow-cyan-400/20"
+            className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-dark text-white font-medium rounded-xl transition-all shadow-lg shadow-cyan-400/20"
           >
             <UserPlus size={18} />
             <span>Add User</span>
@@ -258,7 +258,7 @@ export default function SubUsersManager({ serverId }: SubUsersManagerProps) {
                 <button 
                   onClick={handleSave}
                   disabled={(!editingUser && !selectedUser) || selectedPermissions.length === 0}
-                  className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-4 py-2 bg-accent hover:bg-accent-dark text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   <Save size={18} />
                   <span>Save</span>

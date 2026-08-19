@@ -111,7 +111,7 @@ export default function PluginManager({ serverId }: { serverId: string }) {
               </div>
               <button 
                 type="submit"
-                className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
+                className="px-4 py-2 bg-accent hover:bg-accent-dark text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
               >
                 Search
               </button>

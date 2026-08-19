@@ -26,6 +26,7 @@ router.get("/settings", async (req, res) => {
     // details to an unauthenticated visitor.
     allowUserServerCreation: settings.allowUserServerCreation === true,
     enablePlayit: settings.enablePlayit === true,
+    accentColor: settings.accentColor || "#0EA5E9",
   });
 });
 

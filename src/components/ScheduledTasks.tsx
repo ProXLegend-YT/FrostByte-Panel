@@ -172,7 +172,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
           </div>
           <button
             onClick={() => { setShowForm((v) => !v); resetForm(); }}
-            className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-black font-semibold rounded-xl text-sm flex items-center gap-2 transition-colors shrink-0"
+            className="px-4 py-2 bg-accent hover:bg-accent-dark text-black font-semibold rounded-xl text-sm flex items-center gap-2 transition-colors shrink-0"
           >
             <Plus className="w-4 h-4" /> New Task
           </button>
@@ -298,7 +298,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
               <button
                 onClick={handleCreate}
                 disabled={saving}
-                className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-black font-semibold rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-accent hover:bg-accent-dark text-black font-semibold rounded-lg text-sm transition-colors disabled:opacity-50"
               >
                 {saving ? "Creating..." : "Create Task"}
               </button>

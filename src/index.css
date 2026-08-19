@@ -6,6 +6,36 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/*
+ * Admin-configurable accent color. Defaults match the original frost-cyan
+ * look. These are set as plain CSS custom properties (not Tailwind @theme
+ * tokens) so they can be overridden at runtime via inline styles on
+ * :root from ThemeContext, without a rebuild. New utility classes below
+ * reference them; this intentionally does NOT rewrite the ~380 existing
+ * hardcoded cyan-*/sky-* Tailwind classes across the app — that would be
+ * a large, hard-to-verify mechanical refactor. Instead, the highest-impact
+ * surfaces (primary buttons, active nav states, focus rings) are migrated
+ * to these classes so the theme picker has a real, visible effect without
+ * touching every decorative accent in the codebase.
+ */
+:root {
+  --accent-h: 189;
+  --accent-s: 94%;
+  --accent-l: 43%;
+  --accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+  --accent-light: hsl(var(--accent-h) var(--accent-s) 60%);
+  --accent-dark: hsl(var(--accent-h) var(--accent-s) 32%);
+}
+
+@layer utilities {
+  .bg-accent { background-color: var(--accent); }
+  .bg-accent-light { background-color: var(--accent-light); }
+  .hover\:bg-accent-dark:hover { background-color: var(--accent-dark); }
+  .text-accent { color: var(--accent-light); }
+  .border-accent { border-color: var(--accent); }
+  .ring-accent:focus { --tw-ring-color: var(--accent); }
+}
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

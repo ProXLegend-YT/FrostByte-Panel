@@ -76,7 +76,7 @@ export default function ApiKeysManager() {
             setNewKeyString(null);
             setShowAddModal(true);
           }}
-          className="flex items-center space-x-2 px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-all shadow-sm"
+          className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-dark text-white font-medium rounded-xl transition-all shadow-sm"
         >
           <Plus size={18} />
           <span>Generate Key</span>
@@ -173,7 +173,7 @@ export default function ApiKeysManager() {
                   <button 
                     type="submit"
                     disabled={isProcessing}
-                    className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-accent hover:bg-accent-dark text-white font-medium rounded-xl transition-colors disabled:opacity-50"
                   >
                     {isProcessing ? "Generating..." : "Generate"}
                   </button>

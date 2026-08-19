@@ -3,7 +3,7 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { motion } from "framer-motion";
-import { Shield, User, Trash2, Layout, Upload, RefreshCw, Coins } from "lucide-react";
+import { Shield, User, Trash2, Layout, Upload, RefreshCw, Coins, Check } from "lucide-react";
 import { ImageCropper } from "../components/ImageCropper";
 import { LoadingOverlay } from "../components/LoadingOverlay";
 import TwoFactorSettings from "../components/TwoFactorSettings";
@@ -11,7 +11,7 @@ import CoinEconomySettings from "../components/CoinEconomySettings";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin, refreshUser } = useAuth();
-  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration, allowUserServerCreation, enablePlayit, fetchSettings } = useSettings();
+  const { panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration, allowUserServerCreation, enablePlayit, accentColor, fetchSettings } = useSettings();
   const [users, setUsers] = useState<any[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -20,6 +20,26 @@ export default function SettingsPage() {
   const [newAllowRegistration, setNewAllowRegistration] = useState(allowRegistration);
   const [newAllowUserServerCreation, setNewAllowUserServerCreation] = useState(allowUserServerCreation);
   const [newEnablePlayit, setNewEnablePlayit] = useState(enablePlayit);
+  const [newAccentColor, setNewAccentColor] = useState(accentColor || "#0EA5E9");
+  const [isSavingAccent, setIsSavingAccent] = useState(false);
+  const [accentSaved, setAccentSaved] = useState(false);
+  const presetAccentColors = ["#0EA5E9", "#8B5CF6", "#F43F5E", "#F59E0B", "#22C55E", "#EC4899"];
+
+  const saveAccentColor = async (color: string) => {
+    setNewAccentColor(color);
+    setIsSavingAccent(true);
+    setAccentSaved(false);
+    try {
+      await axios.put("/api/system/settings", { accentColor: color });
+      await fetchSettings();
+      setAccentSaved(true);
+      setTimeout(() => setAccentSaved(false), 1500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingAccent(false);
+    }
+  };
   const [globalServerDefaults, setGlobalServerDefaults] = useState({ defaultMaxServers: 1, defaultMaxRamGb: 4, defaultMaxCpuPercent: 200, defaultMaxDiskGb: 10 });
   const [isSavingGlobalDefaults, setIsSavingGlobalDefaults] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -336,7 +356,7 @@ export default function SettingsPage() {
                 <button 
                   type="submit" 
                   disabled={isChangingPassword}
-                  className="w-full sm:w-auto bg-cyan-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] active:scale-[0.98] whitespace-nowrap"
+                  className="w-full sm:w-auto bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] active:scale-[0.98] whitespace-nowrap"
                 >
                   {isChangingPassword ? "Updating..." : "Update"}
                 </button>
@@ -481,7 +501,7 @@ export default function SettingsPage() {
                           setIsSavingGlobalDefaults(false);
                         }
                       }}
-                      className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                      className="px-4 py-2 bg-accent hover:bg-accent-dark text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50"
                     >
                       {isSavingGlobalDefaults ? "Saving..." : "Save Limits"}
                     </button>
@@ -512,6 +532,42 @@ export default function SettingsPage() {
                     <span className="text-xs text-zinc-500">Adds a "Playit Tunnel" tab on every server for exposing it via playit.gg. Requires the playit-cli binary installed on this host.</span>
                   </div>
                 </label>
+
+                <div className="pt-2">
+                  <span className="text-sm font-medium text-zinc-300 block mb-1">Accent Color</span>
+                  <span className="text-xs text-zinc-500 block mb-3">
+                    Changes the panel's primary buttons, active states, and highlights. Doesn't affect every icon or badge in the app — those keep their original colors.
+                  </span>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {presetAccentColors.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => saveAccentColor(color)}
+                        className="w-8 h-8 rounded-full border-2 transition-all disabled:opacity-50"
+                        style={{
+                          backgroundColor: color,
+                          borderColor: newAccentColor.toLowerCase() === color.toLowerCase() ? "#fff" : "transparent",
+                        }}
+                        disabled={isSavingAccent}
+                        aria-label={`Set accent color to ${color}`}
+                      />
+                    ))}
+                    <div className="flex items-center gap-2 ml-1">
+                      <input
+                        type="color"
+                        value={newAccentColor}
+                        onChange={(e) => setNewAccentColor(e.target.value)}
+                        onBlur={(e) => saveAccentColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg border border-white/10 bg-transparent cursor-pointer"
+                        title="Custom color"
+                      />
+                      <span className="text-xs text-zinc-500 font-mono">{newAccentColor.toUpperCase()}</span>
+                    </div>
+                    {isSavingAccent && <RefreshCw className="w-3.5 h-3.5 text-zinc-500 animate-spin" />}
+                    {accentSaved && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -857,7 +913,7 @@ export default function SettingsPage() {
                           />
                           <button 
                             onClick={() => changeUserPassword(u.id)}
-                            className="px-4 py-2 bg-cyan-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                            className="px-4 py-2 bg-accent hover:bg-accent-dark text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                           >
                             Save
                           </button>

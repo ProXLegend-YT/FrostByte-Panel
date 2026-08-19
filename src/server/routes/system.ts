@@ -475,7 +475,7 @@ router.put("/settings", async (req, res) => {
   const {
     panelName, panelLogo, panelBackgroundImage, panelBackgroundBlur, allowRegistration,
     allowUserServerCreation, defaultMaxServers, defaultMaxRamGb, defaultMaxCpuPercent, defaultMaxDiskGb,
-    enablePlayit,
+    enablePlayit, accentColor,
   } = req.body;
   const settings = await readJSON("settings.json") || {};
   if (panelName !== undefined) settings.panelName = panelName || "FrostByte Panel";
@@ -484,6 +484,13 @@ router.put("/settings", async (req, res) => {
   if (panelBackgroundBlur !== undefined) settings.panelBackgroundBlur = panelBackgroundBlur;
   if (allowRegistration !== undefined) settings.allowRegistration = allowRegistration;
   if (enablePlayit !== undefined) settings.enablePlayit = !!enablePlayit;
+  if (accentColor !== undefined) {
+    if (/^#[0-9a-fA-F]{6}$/.test(accentColor)) {
+      settings.accentColor = accentColor;
+    } else {
+      return res.status(400).json({ error: "accentColor must be a 6-digit hex color, e.g. #0EA5E9." });
+    }
+  }
 
   // Panel-wide default for whether normal users can create servers, plus the
   // shared quota applied to anyone who hasn't been individually configured

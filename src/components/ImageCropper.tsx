@@ -94,7 +94,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, aspectRatio =
             </button>
             <button 
               onClick={showCroppedImage}
-              className="px-6 py-2 bg-cyan-500 hover:bg-sky-600 text-white font-semibold rounded-xl transition-colors shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center gap-2"
+              className="px-6 py-2 bg-accent hover:bg-accent-dark text-white font-semibold rounded-xl transition-colors shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center gap-2"
             >
               <Check size={18} /> Apply
             </button>

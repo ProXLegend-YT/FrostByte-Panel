@@ -107,7 +107,7 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
             </p>
             <button
               onClick={createSftpAccount}
-              className="px-6 py-3 bg-cyan-500 hover:bg-sky-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-cyan-400/20"
+              className="px-6 py-3 bg-accent hover:bg-accent-dark text-white font-bold rounded-xl transition-colors shadow-lg shadow-cyan-400/20"
             >
               Generate SFTP Credentials
             </button>
@@ -178,7 +178,7 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
                         <button
                           onClick={resetPassword}
                           disabled={isResetting}
-                          className="px-5 py-3 bg-cyan-500 hover:bg-sky-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-cyan-400/20 flex items-center justify-center shrink-0 disabled:opacity-50"
+                          className="px-5 py-3 bg-accent hover:bg-accent-dark text-white font-bold rounded-xl transition-colors shadow-lg shadow-cyan-400/20 flex items-center justify-center shrink-0 disabled:opacity-50"
                         >
                           {isResetting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                           Generate Password

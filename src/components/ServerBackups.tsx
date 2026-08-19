@@ -104,7 +104,7 @@ export default function ServerBackups({ serverId }: { serverId: string }) {
           <button 
             onClick={handleCreateBackup}
             disabled={isCreating}
-            className="w-full md:w-auto px-5 py-2.5 bg-cyan-500 hover:bg-sky-600 border border-cyan-300/50 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center shrink-0 disabled:opacity-50"
+            className="w-full md:w-auto px-5 py-2.5 bg-accent hover:bg-accent-dark border border-cyan-300/50 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center shrink-0 disabled:opacity-50"
           >
             {isCreating ? (
               <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Zipping files...</>

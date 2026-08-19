@@ -134,7 +134,7 @@ export default function PlayitTunnel({ serverId }: { serverId: string }) {
             <button
               onClick={handleStart}
               disabled={isProcessing}
-              className="w-full md:w-auto px-5 py-2.5 bg-cyan-500 hover:bg-sky-600 border border-cyan-300/50 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center shrink-0 disabled:opacity-50"
+              className="w-full md:w-auto px-5 py-2.5 bg-accent hover:bg-accent-dark border border-cyan-300/50 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center shrink-0 disabled:opacity-50"
             >
               {isProcessing ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Starting...</> : <><Play className="w-4 h-4 mr-2" /> Start Tunnel</>}
             </button>

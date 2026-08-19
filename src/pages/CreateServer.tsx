@@ -45,7 +45,9 @@ const MINECRAFT_SUBTYPE_META: Record<string, { icon: React.ElementType; color: s
 };
 
 export default function CreateServer() {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [games, setGames] = useState<GameDef[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [selectedGame, setSelectedGame] = useState<GameDef | null>(null);
@@ -88,6 +90,11 @@ export default function CreateServer() {
       setLoadingGames(false);
     }).catch(() => setLoadingGames(false));
 
+    axios.get("/api/system/templates").then((res) => {
+      setTemplates(res.data);
+      setLoadingTemplates(false);
+    }).catch(() => setLoadingTemplates(false));
+
     axios.get("/api/system/stats").then((res) => {
       setTotalSystemRam(res.data.totalMemory / (1024 * 1024 * 1024));
     }).catch(() => {});
@@ -106,22 +113,32 @@ export default function CreateServer() {
     }
   }, [user, isAdmin]);
 
-  const selectGame = (game: GameDef) => {
+  const selectGame = (game: GameDef, template?: any) => {
     setSelectedGame(game);
     const ramCap = isAdmin ? Infinity : (user?.maxRamGb ?? 4);
     const cpuCap = isAdmin ? Infinity : (user?.maxCpuPercent ?? 200);
     const diskCap = isAdmin ? Infinity : (user?.maxDiskGb ?? 10);
-    setRam(Math.min(game.defaultRam, ramCap).toString());
-    setCpu(Math.min(game.defaultCpu, cpuCap).toString());
-    setDisk(Math.min(game.defaultDisk, diskCap).toString());
+    setRam(Math.min(template?.ram ?? game.defaultRam, ramCap).toString());
+    setCpu(Math.min(template?.cpu ?? game.defaultCpu, cpuCap).toString());
+    setDisk(Math.min(template?.disk ?? game.defaultDisk, diskCap).toString());
     setPort(game.id === "minecraft" ? "25565" : "");
-    if (game.subtypes && game.subtypes.length > 0) {
+    if (template?.type) {
+      setType(template.type);
+    } else if (game.subtypes && game.subtypes.length > 0) {
       setType(game.subtypes[0].id);
     } else {
       setType("");
     }
+    if (template?.version) setVersion(template.version);
+    if (template?.startCommand) setStartCommand(template.startCommand);
     setError(null);
     setStep(2);
+  };
+
+  const selectTemplate = (template: any) => {
+    const game = games.find((g) => g.id === template.game);
+    if (!game) return;
+    selectGame(game, template);
   };
 
   useEffect(() => {
@@ -221,15 +238,22 @@ export default function CreateServer() {
         </Link>
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">Deploy New Server</h1>
         <p className="text-zinc-400">
-          {step === 1 ? "Choose what you'd like to deploy." : `Configure your ${selectedGame?.name} server.`}
+          {step === 0 ? "Start from a template, or configure a server from scratch." : step === 1 ? "Choose what you'd like to deploy." : `Configure your ${selectedGame?.name} server.`}
         </p>
       </div>
 
       {/* Step indicator */}
       <div className="flex items-center gap-3 mb-8">
+        <div className={`flex items-center gap-2 ${step >= 0 ? "text-cyan-300" : "text-zinc-600"}`}>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 0 ? "bg-cyan-400/20 border-cyan-400/40" : "border-white/10"}`}>
+            {step > 0 ? <Check size={14} /> : "1"}
+          </div>
+          <span className="text-sm font-semibold hidden sm:inline">Template</span>
+        </div>
+        <div className={`flex-1 h-px ${step >= 1 ? "bg-cyan-400/40" : "bg-white/10"}`} />
         <div className={`flex items-center gap-2 ${step >= 1 ? "text-cyan-300" : "text-zinc-600"}`}>
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 1 ? "bg-cyan-400/20 border-cyan-400/40" : "border-white/10"}`}>
-            {step > 1 ? <Check size={14} /> : "1"}
+            {step > 1 ? <Check size={14} /> : "2"}
           </div>
           <span className="text-sm font-semibold hidden sm:inline">Choose Game</span>
         </div>
@@ -243,6 +267,65 @@ export default function CreateServer() {
       </div>
 
       <AnimatePresence mode="wait">
+        {step === 0 && (
+          <motion.div
+            key="step0"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25 }}
+          >
+            {loadingTemplates ? (
+              <div className="flex justify-center py-20">
+                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-zinc-400 mb-6">No templates have been set up yet.</p>
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-3 bg-accent hover:bg-accent-dark text-white font-semibold rounded-xl transition-colors"
+                >
+                  Configure a Server from Scratch
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  {templates.map((t) => {
+                    const gameDef = games.find((g) => g.id === t.game);
+                    const Icon = GAME_ICONS[t.game] || Gamepad2;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => selectTemplate(t)}
+                        className="text-left bg-black/40 glass-panel border border-white/10 hover:border-cyan-400/40 rounded-2xl p-6 transition-all group relative overflow-hidden"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center mb-4 group-hover:border-cyan-400/40 group-hover:bg-cyan-400/10 transition-all relative z-10">
+                          <Icon className="w-6 h-6 text-zinc-400 group-hover:text-cyan-300 transition-colors" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors relative z-10">{t.name}</h3>
+                        <p className="text-sm text-zinc-500 mt-1 relative z-10">
+                          {t.description || `${gameDef?.name || t.game}${t.version ? ` · ${t.version}` : ""}`}
+                        </p>
+                        <div className="mt-4 flex items-center text-xs font-semibold text-cyan-400/80 relative z-10">
+                          Use Template <ArrowRight size={13} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setStep(1)}
+                  className="w-full text-center py-3 text-sm text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 rounded-xl transition-colors"
+                >
+                  Or configure a server from scratch
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {step === 1 && (
           <motion.div
             key="step1"

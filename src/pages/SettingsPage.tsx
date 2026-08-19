@@ -8,6 +8,7 @@ import { ImageCropper } from "../components/ImageCropper";
 import { LoadingOverlay } from "../components/LoadingOverlay";
 import TwoFactorSettings from "../components/TwoFactorSettings";
 import CoinEconomySettings from "../components/CoinEconomySettings";
+import TemplateManager from "../components/TemplateManager";
 
 export default function SettingsPage() {
   const { user, logout, isAdmin, refreshUser } = useAuth();
@@ -929,6 +930,15 @@ export default function SettingsPage() {
       )}
 
       {isAdmin && <CoinEconomySettings />}
+
+      {isAdmin && (
+        <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-6 md:p-8 shadow-xl mt-8">
+          <h2 className="text-xl font-bold mb-4 flex items-center text-white">
+            <Layout className="mr-3 text-accent-light w-5 h-5" /> Server Templates
+          </h2>
+          <TemplateManager />
+        </div>
+      )}
 
       {isAdmin && (
         <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-6 md:p-8 shadow-xl mt-8">

@@ -725,4 +725,54 @@ router.post("/store/purchase", async (req, res) => {
   res.json(result);
 });
 
+// --- Server Templates ---
+// Admin-defined presets that pre-fill the server creation wizard (game,
+// version, startup config, and resource defaults). Anyone authenticated
+// can read the list (they need it to use the wizard); only admins/owners
+// can create, edit, or delete templates.
+
+router.get("/templates", async (req, res) => {
+  const templates = await readJSON("templates.json") || [];
+  res.json(templates);
+});
+
+router.post("/templates", async (req, res) => {
+  const user = (req as any).user;
+  if (user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const { name, description, game, type, version, ram, cpu, disk, startCommand } = req.body;
+  if (!name || !game) return res.status(400).json({ error: "Template needs at least a name and a game type." });
+
+  const { randomUUID } = await import("crypto");
+  const templates = await readJSON("templates.json") || [];
+  const template = {
+    id: randomUUID(),
+    name: String(name).slice(0, 60),
+    description: String(description || "").slice(0, 200),
+    game,
+    type: type || "",
+    version: version || "",
+    ram: ram !== undefined ? Number(ram) : undefined,
+    cpu: cpu !== undefined ? Number(cpu) : undefined,
+    disk: disk !== undefined ? Number(disk) : undefined,
+    startCommand: startCommand || "",
+    createdAt: new Date().toISOString(),
+    createdBy: user.username,
+  };
+  templates.push(template);
+  await writeJSON("templates.json", templates);
+  res.json(template);
+});
+
+router.delete("/templates/:id", async (req, res) => {
+  const user = (req as any).user;
+  if (user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+
+  const templates = await readJSON("templates.json") || [];
+  const next = templates.filter((t: any) => t.id !== req.params.id);
+  if (next.length === templates.length) return res.status(404).json({ error: "Template not found." });
+  await writeJSON("templates.json", next);
+  res.json({ success: true });
+});
+
 export default router;

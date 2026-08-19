@@ -116,7 +116,7 @@ export default function TwoFactorSettings({ enabled, onChanged }: { enabled: boo
           Add this key to an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it generates.
         </p>
         <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-4 py-3 mb-4 max-w-md">
-          <code className="text-cyan-300 font-mono text-sm break-all flex-1">{secret}</code>
+          <code className="text-accent font-mono text-sm break-all flex-1">{secret}</code>
           <button onClick={copySecret} className="shrink-0 p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-zinc-200 transition-colors">
             {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
           </button>
@@ -134,7 +134,7 @@ export default function TwoFactorSettings({ enabled, onChanged }: { enabled: boo
               maxLength={6}
               placeholder="123456"
               autoFocus
-              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white font-mono transition-all shadow-inner outline-none"
+              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white font-mono transition-all shadow-inner outline-none"
             />
             <button
               type="submit"

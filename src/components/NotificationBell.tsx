@@ -17,7 +17,7 @@ interface Notification {
 }
 
 const TYPE_ICON: Record<Notification["type"], React.ReactNode> = {
-  info: <Info size={16} className="text-cyan-300" />,
+  info: <Info size={16} className="text-accent" />,
   success: <CheckCircle2 size={16} className="text-emerald-400" />,
   warning: <AlertTriangle size={16} className="text-orange-400" />,
   error: <XCircle size={16} className="text-red-400" />,
@@ -108,7 +108,7 @@ export function NotificationBell() {
         >
           <Bell size={18} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-cyan-400 text-[#030308] text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(56,189,248,0.6)]">
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-accent text-[#030308] text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(56,189,248,0.6)]">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -126,7 +126,7 @@ export function NotificationBell() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 sticky top-0 bg-[#0a0c14]/95 backdrop-blur-sm">
                 <h3 className="font-bold text-sm text-white">Notifications</h3>
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1 font-medium">
+                  <button onClick={markAllRead} className="text-xs text-accent hover:text-accent flex items-center gap-1 font-medium">
                     <CheckCheck size={13} /> Mark all read
                   </button>
                 )}
@@ -140,13 +140,13 @@ export function NotificationBell() {
                     <button
                       key={n.id}
                       onClick={() => handleNotificationClick(n)}
-                      className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors flex gap-3 ${!n.read ? "bg-cyan-400/5" : ""}`}
+                      className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors flex gap-3 ${!n.read ? "bg-accent-5" : ""}`}
                     >
                       <div className="mt-0.5 shrink-0">{TYPE_ICON[n.type]}</div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold text-zinc-100 truncate">{n.title}</p>
-                          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />}
+                          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />}
                         </div>
                         <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{n.message}</p>
                         <p className="text-[10px] text-zinc-500 mt-1 font-mono">{timeAgo(n.createdAt)}</p>
@@ -167,7 +167,7 @@ export function NotificationBell() {
             initial={{ opacity: 0, y: -16, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: -16, x: "-50%" }}
-            className="fixed top-4 left-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm bg-[#0a0c14]/95 backdrop-blur-sm border border-cyan-400/20 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] p-4 flex gap-3"
+            className="fixed top-4 left-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm bg-[#0a0c14]/95 backdrop-blur-sm border border-accent-20 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] p-4 flex gap-3"
           >
             <div className="mt-0.5 shrink-0">{TYPE_ICON[toast.type]}</div>
             <div className="min-w-0 flex-1">

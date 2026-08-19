@@ -134,7 +134,7 @@ export default function PlayitTunnel({ serverId }: { serverId: string }) {
             <button
               onClick={handleStart}
               disabled={isProcessing}
-              className="w-full md:w-auto px-5 py-2.5 bg-accent hover:bg-accent-dark border border-cyan-300/50 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center shrink-0 disabled:opacity-50"
+              className="w-full md:w-auto px-5 py-2.5 bg-accent hover:bg-accent-dark border border-accent-50 text-white font-medium rounded-lg transition-all shadow-lg flex items-center justify-center shrink-0 disabled:opacity-50"
             >
               {isProcessing ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Starting...</> : <><Play className="w-4 h-4 mr-2" /> Start Tunnel</>}
             </button>
@@ -142,15 +142,15 @@ export default function PlayitTunnel({ serverId }: { serverId: string }) {
         </div>
 
         {data.claimLink && (
-          <div className="bg-cyan-400/[0.06] border border-cyan-400/20 p-5 rounded-xl">
-            <h3 className="text-sm font-bold text-cyan-300 uppercase tracking-widest mb-3 flex items-center">
+          <div className="bg-accent/[0.06] border border-accent-20 p-5 rounded-xl">
+            <h3 className="text-sm font-bold text-accent uppercase tracking-widest mb-3 flex items-center">
               <LinkIcon className="w-4 h-4 mr-2" /> Claim This Tunnel
             </h3>
             <p className="text-xs text-zinc-400 mb-3">
               Open this link and sign in with your playit.gg account to finish setup and get your public address.
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 min-w-0 truncate bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-cyan-200">
+              <code className="flex-1 min-w-0 truncate bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-accent-light">
                 {data.claimLink}
               </code>
               <button

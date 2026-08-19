@@ -50,7 +50,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         {panelLogo ? (
           <img src={panelLogo} alt="Logo" className="w-8 h-8 rounded-lg object-cover shadow-[0_0_15px_rgba(94,234,212,0.15)] flex-shrink-0" />
         ) : (
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.5)] flex-shrink-0">
+          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-accent shadow-[0_0_15px_rgba(56,189,248,0.5)] flex-shrink-0">
             <Server className="w-4 h-4 text-[#030308]" />
           </div>
         )}
@@ -72,7 +72,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               {isActive && (
                 <motion.div 
                   layoutId="activeTab" 
-                  className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-sky-500/10 border border-cyan-400/20 rounded-xl shadow-[0_0_15px_rgba(56,189,248,0.1)]" 
+                  className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-accent/10 border border-accent-20 rounded-xl shadow-[0_0_15px_rgba(56,189,248,0.1)]" 
                   initial={false} 
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
@@ -89,14 +89,14 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       </nav>
 
       <div className="w-full px-4 mt-auto space-y-3">
-        <div className="bg-black/35 rounded-xl p-3 flex items-center gap-3 border border-white/10 hover:border-cyan-400/30 transition-all cursor-default shadow-inner relative overflow-hidden group">
+        <div className="bg-black/35 rounded-xl p-3 flex items-center gap-3 border border-white/10 hover:border-accent-30 transition-all cursor-default shadow-inner relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-sky-500 border border-white/20 flex items-center justify-center font-black text-sm text-[#030308] shadow-[0_0_10px_rgba(56,189,248,0.5)] relative z-10">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-accent border border-white/20 flex items-center justify-center font-black text-sm text-[#030308] shadow-[0_0_10px_rgba(56,189,248,0.5)] relative z-10">
             {user?.username?.[0]?.toUpperCase()}
           </div>
           <div className="overflow-hidden flex-1 relative z-10">
             <p className="font-bold text-white truncate text-sm tracking-tight drop-shadow-sm">{user?.username}</p>
-            <p className="text-[10px] text-cyan-300/80 capitalize truncate font-bold uppercase tracking-widest">{user?.role || "User"}</p>
+            <p className="text-[10px] text-accent-80 capitalize truncate font-bold uppercase tracking-widest">{user?.role || "User"}</p>
           </div>
         </div>
         <button onClick={logout} className="flex items-center space-x-3 w-full px-3 py-2.5 rounded-xl text-zinc-400 hover:bg-red-500/10 hover:text-red-400 transition-all group">

@@ -85,7 +85,7 @@ export default function ServerView() {
       <motion.div
         animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full"
+        className="w-12 h-12 border-2 border-accent border-t-transparent rounded-full"
       />
     </div>
   );
@@ -232,9 +232,9 @@ export default function ServerView() {
                 key={tab.name}
                 to={tab.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center space-x-3 px-3 py-2.5 text-sm font-medium transition-all rounded-lg ${isActive ? 'bg-cyan-400/20 text-cyan-300 shadow-sm border border-cyan-400/30' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] border border-transparent'}`}
+                className={`flex items-center space-x-3 px-3 py-2.5 text-sm font-medium transition-all rounded-lg ${isActive ? 'bg-accent-20 text-accent shadow-sm border border-accent-30' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] border border-transparent'}`}
               >
-                <div className={`${isActive ? 'text-cyan-300' : 'text-zinc-500'} transition-colors`}>
+                <div className={`${isActive ? 'text-accent' : 'text-zinc-500'} transition-colors`}>
                   {React.cloneElement(tab.icon, { className: "w-4 h-4" })}
                 </div>
                 <span>{tab.name}</span>

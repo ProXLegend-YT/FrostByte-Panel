@@ -82,9 +82,9 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
 
         <div>
           <h2 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-1 flex items-center">
-            <Globe2 className="w-6 h-6 mr-2 text-cyan-400" /> World Installer
+            <Globe2 className="w-6 h-6 mr-2 text-accent" /> World Installer
           </h2>
-          <p className="text-[11px] font-bold text-cyan-300/80 uppercase tracking-widest mt-1">
+          <p className="text-[11px] font-bold text-accent-80 uppercase tracking-widest mt-1">
             Install a world save in one click — upload a zip, or point at a direct download link.
           </p>
         </div>
@@ -104,13 +104,13 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
             <div className="flex gap-1 p-1 bg-white/[0.03] rounded-xl w-fit">
               <button
                 onClick={() => { setMode("upload"); setResult(null); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${mode === "upload" ? "bg-cyan-500/20 text-cyan-300" : "text-zinc-400 hover:text-zinc-200"}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${mode === "upload" ? "bg-accent-20 text-accent" : "text-zinc-400 hover:text-zinc-200"}`}
               >
                 <UploadCloud className="w-4 h-4" /> Upload zip
               </button>
               <button
                 onClick={() => { setMode("url"); setResult(null); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${mode === "url" ? "bg-cyan-500/20 text-cyan-300" : "text-zinc-400 hover:text-zinc-200"}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${mode === "url" ? "bg-accent-20 text-accent" : "text-zinc-400 hover:text-zinc-200"}`}
               >
                 <Link2 className="w-4 h-4" /> From URL
               </button>
@@ -125,7 +125,7 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${
-                  isDragging ? "border-cyan-400 bg-cyan-400/5" : "border-white/10 hover:border-white/20"
+                  isDragging ? "border-accent bg-accent-5" : "border-white/10 hover:border-white/20"
                 }`}
               >
                 <input
@@ -137,7 +137,7 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
                 />
                 {file ? (
                   <div className="flex flex-col items-center gap-2">
-                    <FileArchive className="w-8 h-8 text-cyan-400" />
+                    <FileArchive className="w-8 h-8 text-accent" />
                     <p className="text-sm font-medium text-zinc-200">{file.name}</p>
                     <p className="text-xs text-zinc-500">{(file.size / (1024 * 1024)).toFixed(1)} MB — click to choose a different file</p>
                   </div>
@@ -159,7 +159,7 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
                     placeholder="https://example.com/my-world.zip"
                     value={sourceUrl}
                     onChange={(e) => setSourceUrl(e.target.value)}
-                    className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-accent transition-colors"
                   />
                 </div>
                 <p className="text-xs text-zinc-500 mt-2">A direct link to a .zip file. Only install worlds from sources you trust.</p>
@@ -173,7 +173,7 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
                 placeholder="Leave blank to keep the current level-name"
                 value={worldName}
                 onChange={(e) => setWorldName(e.target.value)}
-                className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-accent transition-colors"
               />
               <p className="text-xs text-zinc-500 mt-2">
                 If a world is already installed under this name, it's automatically backed up before being replaced.
@@ -192,7 +192,7 @@ export default function WorldManager({ serverId, serverStatus }: { serverId: str
             <button
               onClick={handleInstall}
               disabled={isInstalling}
-              className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-black font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-cyan-500/10"
+              className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-accent hover:from-cyan-400 hover:to-accent-light text-black font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-cyan-500/10"
             >
               {isInstalling ? (
                 <><RefreshCw className="w-4 h-4 animate-spin" /> Installing world...</>

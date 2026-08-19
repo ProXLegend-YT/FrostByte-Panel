@@ -89,9 +89,9 @@ export default function ServerHistory({ serverId, limitRam, limitCpu }: { server
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div>
             <h2 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-1 flex items-center">
-              <TrendingUp className="w-6 h-6 mr-2 text-cyan-400" /> Resource History
+              <TrendingUp className="w-6 h-6 mr-2 text-accent" /> Resource History
             </h2>
-            <p className="text-[11px] font-bold text-cyan-300/80 uppercase tracking-widest mt-1">
+            <p className="text-[11px] font-bold text-accent-80 uppercase tracking-widest mt-1">
               CPU and memory usage over time
             </p>
           </div>
@@ -102,7 +102,7 @@ export default function ServerHistory({ serverId, limitRam, limitCpu }: { server
                 key={opt.key}
                 onClick={() => setRange(opt.key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  range === opt.key ? "bg-cyan-500 text-black" : "text-zinc-400 hover:text-zinc-200"
+                  range === opt.key ? "bg-accent text-black" : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 {opt.label}
@@ -118,7 +118,7 @@ export default function ServerHistory({ serverId, limitRam, limitCpu }: { server
           </div>
         ) : loading && chartData.length === 0 ? (
           <div className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-3xl p-8 text-center text-zinc-500 flex flex-col items-center">
-            <RefreshCw className="w-6 h-6 animate-spin mb-3 text-cyan-500/50" />
+            <RefreshCw className="w-6 h-6 animate-spin mb-3 text-accent-50" />
             Loading history...
           </div>
         ) : chartData.length === 0 ? (
@@ -129,15 +129,15 @@ export default function ServerHistory({ serverId, limitRam, limitCpu }: { server
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatChip icon={<Cpu className="w-3.5 h-3.5" />} label="Avg CPU" value={`${avgCpu.toFixed(1)}%`} color="text-cyan-400" />
-              <StatChip icon={<Cpu className="w-3.5 h-3.5" />} label="Peak CPU" value={`${peakCpu.toFixed(1)}%`} color="text-cyan-400" />
+              <StatChip icon={<Cpu className="w-3.5 h-3.5" />} label="Avg CPU" value={`${avgCpu.toFixed(1)}%`} color="text-accent" />
+              <StatChip icon={<Cpu className="w-3.5 h-3.5" />} label="Peak CPU" value={`${peakCpu.toFixed(1)}%`} color="text-accent" />
               <StatChip icon={<MemoryStick className="w-3.5 h-3.5" />} label="Avg RAM" value={`${avgRam.toFixed(1)} GB`} color="text-emerald-400" />
               <StatChip icon={<MemoryStick className="w-3.5 h-3.5" />} label="Peak RAM" value={`${peakRam.toFixed(1)} GB`} color="text-emerald-400" />
             </div>
 
             <div className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-3xl p-4 md:p-6 shadow-[0_0_40px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
               <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-cyan-400" /> CPU Usage
+                <Cpu className="w-4 h-4 text-accent" /> CPU Usage
                 {limitCpu ? <span className="text-zinc-600 font-normal">· limit {limitCpu}%</span> : null}
               </h3>
               <div className="h-56 -ml-2">

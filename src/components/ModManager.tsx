@@ -88,7 +88,7 @@ export default function ModManager({ serverId }: { serverId: string }) {
             <h2 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-1 flex items-center">
                <Box className="w-6 h-6 mr-2 text-emerald-400" /> Mod Manager
             </h2>
-            <p className="text-[11px] font-bold text-cyan-300/80 uppercase tracking-widest mt-1">
+            <p className="text-[11px] font-bold text-accent-80 uppercase tracking-widest mt-1">
               {tab === "mods" ? "Search and install mods from Modrinth in one click." : "Install a full curated modpack in one click."}
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function ModManager({ serverId }: { serverId: string }) {
                     placeholder="Search for mods..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-accent transition-colors"
                   />
                 </div>
                 <button 
@@ -292,7 +292,7 @@ function ModpackBrowser({ serverId }: { serverId: string }) {
                 placeholder="Search modpacks (e.g. All the Mods, Better MC)..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-accent transition-colors"
               />
             </div>
             <button
@@ -409,7 +409,7 @@ function ModpackBrowser({ serverId }: { serverId: string }) {
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-zinc-200 truncate">{v.name || v.versionNumber}</p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400">MC {mcVersion}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent-10 text-accent">MC {mcVersion}</span>
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">{loaderLabel}</span>
                           </div>
                         </div>

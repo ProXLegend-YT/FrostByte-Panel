@@ -25,6 +25,19 @@
   --accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
   --accent-light: hsl(var(--accent-h) var(--accent-s) 60%);
   --accent-dark: hsl(var(--accent-h) var(--accent-s) 32%);
+  /* Opacity variants matching the exact percentages already used across
+     the app (bg-accent-5, /10, /20, /30, /40, /50, etc.), built with
+     color-mix() so a single accent color drives all of them consistently
+     instead of needing a full manual Tailwind palette per custom color. */
+  --accent-5: color-mix(in srgb, var(--accent-light) 5%, transparent);
+  --accent-10: color-mix(in srgb, var(--accent-light) 10%, transparent);
+  --accent-20: color-mix(in srgb, var(--accent-light) 20%, transparent);
+  --accent-30: color-mix(in srgb, var(--accent-light) 30%, transparent);
+  --accent-40: color-mix(in srgb, var(--accent-light) 40%, transparent);
+  --accent-15: color-mix(in srgb, var(--accent-light) 15%, transparent);
+  --accent-50: color-mix(in srgb, var(--accent-light) 50%, transparent);
+  --accent-80: color-mix(in srgb, var(--accent-light) 80%, transparent);
+  --accent-90: color-mix(in srgb, var(--accent-light) 90%, transparent);
 }
 
 @layer utilities {
@@ -33,7 +46,35 @@
   .hover\:bg-accent-dark:hover { background-color: var(--accent-dark); }
   .text-accent { color: var(--accent-light); }
   .border-accent { border-color: var(--accent); }
+
+  .bg-accent-5 { background-color: var(--accent-5); }
+  .bg-accent-10 { background-color: var(--accent-10); }
+  .bg-accent-20 { background-color: var(--accent-20); }
+  .bg-accent-30 { background-color: var(--accent-30); }
+  .border-accent-20 { border-color: var(--accent-20); }
+  .border-accent-30 { border-color: var(--accent-30); }
+  .border-accent-40 { border-color: var(--accent-40); }
+  .border-accent-50 { border-color: var(--accent-50); }
+  .ring-accent-color { --tw-ring-color: var(--accent); }
+  .hover\:bg-accent-10:hover { background-color: var(--accent-10); }
+  .hover\:bg-accent-20:hover { background-color: var(--accent-20); }
+  .hover\:border-accent-30:hover { border-color: var(--accent-30); }
+  .hover\:border-accent-40:hover { border-color: var(--accent-40); }
+  .hover\:text-accent:hover { color: var(--accent-light); }
   .ring-accent:focus { --tw-ring-color: var(--accent); }
+
+  /* Fixups: real Tailwind classes support slash-opacity (bg-cyan-400/40),
+     but that syntax doesn't apply to arbitrary custom classes like our
+     .bg-accent — it silently renders at full opacity instead. These
+     explicit classes exist so the mechanical cyan->accent migration below
+     has real targets to replace bg-accent-40 etc. with. */
+  .bg-accent-15 { background-color: var(--accent-15); }
+  .bg-accent-40 { background-color: var(--accent-40); }
+  .bg-accent-50 { background-color: var(--accent-50); }
+  .bg-accent-90 { background-color: var(--accent-90); }
+  .text-accent-50 { color: var(--accent-50); }
+  .text-accent-80 { color: var(--accent-80); }
+  .ring-accent-50 { --tw-ring-color: var(--accent-50); }
 }
 
 @layer utilities {

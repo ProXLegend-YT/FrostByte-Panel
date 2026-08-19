@@ -14,9 +14,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   if (isServerView) {
     return (
-      <div className="flex h-[100dvh] w-full bg-transparent text-zinc-100 font-sans overflow-hidden selection:bg-cyan-400/30">
+      <div className="flex h-[100dvh] w-full bg-transparent text-zinc-100 font-sans overflow-hidden selection:bg-accent-30">
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-accent-10 blur-[120px] rounded-full pointer-events-none" />
           <main className="flex-1 w-full h-full relative z-10 overflow-hidden">
             {children}
           </main>
@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`flex h-[100dvh] w-full bg-transparent text-zinc-100 font-sans overflow-hidden selection:bg-cyan-400/30`}>
+    <div className={`flex h-[100dvh] w-full bg-transparent text-zinc-100 font-sans overflow-hidden selection:bg-accent-30`}>
       {/* Mobile Sidebar Overlay */}
       {mobileOpen && (
         <div 
@@ -42,7 +42,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
         {/* Subtle background glow effect */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-accent-10 blur-[120px] rounded-full pointer-events-none" />
 
         {/* Mobile Header (only shown on mobile screens) */}
         <div className="md:hidden flex items-center justify-between p-4 bg-transparent backdrop-blur-md border-b border-white/5 flex-shrink-0 relative z-30">

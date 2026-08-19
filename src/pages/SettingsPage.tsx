@@ -287,15 +287,15 @@ export default function SettingsPage() {
     >
       <div className="mb-10">
         <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-lg">Settings</h1>
-        <p className="text-cyan-300/80 font-bold uppercase tracking-widest text-sm mt-2">Configure your account and platform preferences.</p>
+        <p className="text-accent-80 font-bold uppercase tracking-widest text-sm mt-2">Configure your account and platform preferences.</p>
       </div>
 
       <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-10 mb-8 shadow-[0_0_50px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden">
         {/* Subtle decorative glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-400/5 blur-[80px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-accent-5 blur-[80px] rounded-full pointer-events-none" />
         
         <h2 className="text-xl font-bold mb-6 flex items-center text-white relative z-10">
-          <User className="mr-3 text-cyan-300 w-5 h-5" /> Account Details
+          <User className="mr-3 text-accent w-5 h-5" /> Account Details
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 mb-8">
           <div className="bg-black/40 backdrop-blur-sm border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
@@ -342,7 +342,7 @@ export default function SettingsPage() {
                 onChange={e => setOldPassword(e.target.value)} 
                 type="password" 
                 placeholder="Current password"
-                className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
+                className="w-full bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
               />
               <div className="flex flex-col sm:flex-row gap-3">
                 <input 
@@ -352,7 +352,7 @@ export default function SettingsPage() {
                   onChange={e => setNewPassword(e.target.value)} 
                   type="password" 
                   placeholder="New password (min 8 chars)"
-                  className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
+                  className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
                 />
                 <button 
                   type="submit" 
@@ -398,7 +398,7 @@ export default function SettingsPage() {
                   value={newPanelName} 
                   onChange={e => setNewPanelName(e.target.value)} 
                   type="text" 
-                  className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
+                  className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" 
                 />
                 <button disabled={isSavingSettings} type="submit" className="w-full sm:w-auto bg-white text-zinc-900 hover:bg-zinc-200 font-semibold px-6 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98] whitespace-nowrap disabled:opacity-50">
                   {isSavingSettings ? "Saving..." : "Save"}
@@ -428,7 +428,7 @@ export default function SettingsPage() {
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
                   </div>
                   <div>
                     <span className="text-sm font-medium text-zinc-300 block">Allow Public Self-Registration</span>
@@ -453,7 +453,7 @@ export default function SettingsPage() {
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
                   </div>
                   <div>
                     <span className="text-sm font-medium text-zinc-300 block">Enable Server Creation For Normal Users</span>
@@ -469,25 +469,25 @@ export default function SettingsPage() {
                         <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Servers per user</label>
                         <input type="number" min={0} max={50} value={globalServerDefaults.defaultMaxServers}
                           onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxServers: Number(e.target.value) }))}
-                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                       </div>
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max RAM (GB) per server</label>
                         <input type="number" min={0.5} max={128} step={0.5} value={globalServerDefaults.defaultMaxRamGb}
                           onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxRamGb: Number(e.target.value) }))}
-                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                       </div>
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max CPU (%) per server</label>
                         <input type="number" min={10} max={1600} value={globalServerDefaults.defaultMaxCpuPercent}
                           onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxCpuPercent: Number(e.target.value) }))}
-                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                       </div>
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Disk (GB) per server</label>
                         <input type="number" min={1} max={1000} value={globalServerDefaults.defaultMaxDiskGb}
                           onChange={(e) => setGlobalServerDefaults(d => ({ ...d, defaultMaxDiskGb: Number(e.target.value) }))}
-                          className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                          className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                       </div>
                     </div>
                     <button
@@ -526,7 +526,7 @@ export default function SettingsPage() {
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
                   </div>
                   <div>
                     <span className="text-sm font-medium text-zinc-300 block">Enable Playit.gg Tunnel</span>
@@ -607,9 +607,9 @@ export default function SettingsPage() {
                   <button 
                     disabled={isUpdatingLogo}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center w-full gap-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 border border-cyan-400/20 font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98] disabled:opacity-50"
+                    className="flex items-center justify-center w-full gap-2 bg-accent-10 hover:bg-accent-20 text-accent border border-accent-20 font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98] disabled:opacity-50"
                   >
-                    {isUpdatingLogo ? <div className="w-4 h-4 rounded-full border-2 border-cyan-300/50 border-t-cyan-300 animate-spin"></div> : <Upload size={18} />}
+                    {isUpdatingLogo ? <div className="w-4 h-4 rounded-full border-2 border-accent-50 border-t-cyan-300 animate-spin"></div> : <Upload size={18} />}
                     {isUpdatingLogo ? "Updating..." : (panelLogo ? "Change Logo" : "Upload Logo")}
                   </button>
                   <p className="text-xs text-zinc-500 mt-2">Recommended: Square image, PNG or JPG.</p>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
       {isAdmin && (
         <div className="bg-black/20 backdrop-blur-sm border border-white/5 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden mt-8">
           <h2 className="text-xl font-bold mb-8 flex items-center text-white relative z-10">
-            <Layout className="mr-3 text-cyan-300 w-5 h-5" /> Background Configuration
+            <Layout className="mr-3 text-accent w-5 h-5" /> Background Configuration
           </h2>
           <div className="max-w-2xl relative z-10">
             <div className="flex flex-col sm:flex-row gap-8">
@@ -663,7 +663,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-2">
                   <button 
                     onClick={() => bgFileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-300 border border-cyan-400/20 font-semibold px-4 py-3 rounded-xl transition-all shadow-sm active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 bg-accent-10 hover:bg-accent-20 text-accent border border-accent-20 font-semibold px-4 py-3 rounded-xl transition-all shadow-sm active:scale-[0.98]"
                   >
                     <Upload size={18} /> Upload Background Image
                   </button>
@@ -687,7 +687,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex-1 flex flex-col justify-center">
-                <label className="block text-xs font-bold text-cyan-200 uppercase tracking-widest mb-2 drop-shadow-sm">Background Blur: {tempBgBlur}px</label>
+                <label className="block text-xs font-bold text-accent-light uppercase tracking-widest mb-2 drop-shadow-sm">Background Blur: {tempBgBlur}px</label>
                 <p className="text-xs text-zinc-500 mb-6">Adjust the blur to make the text and UI elements more readable.</p>
                 <input 
                   type="range" 
@@ -743,15 +743,15 @@ export default function SettingsPage() {
               <form onSubmit={createUser} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-400 mb-1.5">Username</label>
-                  <input required value={username} onChange={e=>setUsername(e.target.value)} type="text" className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" />
+                  <input required value={username} onChange={e=>setUsername(e.target.value)} type="text" className="w-full bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-zinc-400 mb-1.5">Password</label>
-                  <input required minLength={4} value={password} onChange={e=>setPassword(e.target.value)} type="password" className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" />
+                  <input required minLength={4} value={password} onChange={e=>setPassword(e.target.value)} type="password" className="w-full bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-zinc-400 mb-1.5">Role Privileges</label>
-                  <select value={role} onChange={e=>setRole(e.target.value)} className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none">
+                  <select value={role} onChange={e=>setRole(e.target.value)} className="w-full bg-white/[0.03] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-2.5 text-white transition-all shadow-inner outline-none">
                     <option value="user" className="bg-zinc-900">Standard User</option>
                     <option value="admin" className="bg-zinc-900">Administrator</option>
                   </select>
@@ -773,7 +773,7 @@ export default function SettingsPage() {
                         <div>
                           <p className="font-medium text-white flex items-center">
                             {u.username}
-                            {u.id === user.id && <span className="ml-3 text-[10px] uppercase font-bold tracking-wider bg-cyan-400/20 text-cyan-300 px-2.5 py-0.5 rounded border border-cyan-400/20">You</span>}
+                            {u.id === user.id && <span className="ml-3 text-[10px] uppercase font-bold tracking-wider bg-accent-20 text-accent px-2.5 py-0.5 rounded border border-accent-20">You</span>}
                           </p>
                           <p className={`text-xs mt-1 capitalize font-medium ${u.role === 'admin' ? 'text-purple-400' : 'text-zinc-500'}`}> 
                             Role: {u.role}
@@ -798,7 +798,7 @@ export default function SettingsPage() {
                                 setEditingUserId(u.id);
                                 setAdminUserNewPassword("");
                               }
-                            }} className="px-3 py-1.5 text-xs font-medium text-cyan-300 bg-cyan-400/10 hover:bg-cyan-400/20 rounded-lg transition-colors">
+                            }} className="px-3 py-1.5 text-xs font-medium text-accent bg-accent-10 hover:bg-accent-20 rounded-lg transition-colors">
                               {editingUserId === u.id ? "Cancel" : "Change Password"}
                             </button>
                           )}
@@ -868,25 +868,25 @@ export default function SettingsPage() {
                                 <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Servers</label>
                                 <input type="number" min={0} max={50} value={permissionsDraft.maxServers}
                                   onChange={(e) => setPermissionsDraft(d => ({ ...d, maxServers: Number(e.target.value) }))}
-                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                               </div>
                               <div>
                                 <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max RAM (GB) per server</label>
                                 <input type="number" min={0.5} max={128} step={0.5} value={permissionsDraft.maxRamGb}
                                   onChange={(e) => setPermissionsDraft(d => ({ ...d, maxRamGb: Number(e.target.value) }))}
-                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                               </div>
                               <div>
                                 <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max CPU (%) per server</label>
                                 <input type="number" min={10} max={1600} value={permissionsDraft.maxCpuPercent}
                                   onChange={(e) => setPermissionsDraft(d => ({ ...d, maxCpuPercent: Number(e.target.value) }))}
-                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                               </div>
                               <div>
                                 <label className="block text-[11px] font-medium text-zinc-500 mb-1">Max Disk (GB) per server</label>
                                 <input type="number" min={1} max={1000} value={permissionsDraft.maxDiskGb}
                                   onChange={(e) => setPermissionsDraft(d => ({ ...d, maxDiskGb: Number(e.target.value) }))}
-                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none" />
+                                  className="w-full bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none" />
                               </div>
                             </div>
                           )}
@@ -910,7 +910,7 @@ export default function SettingsPage() {
                             placeholder="New Password (min 8 chars)" 
                             value={adminUserNewPassword}
                             onChange={(e) => setAdminUserNewPassword(e.target.value)}
-                            className="flex-1 bg-white/[0.03] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-2 text-sm text-white outline-none"
+                            className="flex-1 bg-white/[0.03] border border-white/10 focus:border-accent rounded-lg px-3 py-2 text-sm text-white outline-none"
                           />
                           <button 
                             onClick={() => changeUserPassword(u.id)}

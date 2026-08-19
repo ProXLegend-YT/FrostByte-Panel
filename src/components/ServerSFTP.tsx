@@ -73,7 +73,7 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full" />
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h2 className="text-2xl font-bold text-white mb-2 flex items-center">
-            <Network className="w-6 h-6 mr-3 text-cyan-300" />
+            <Network className="w-6 h-6 mr-3 text-accent" />
             SFTP Details
           </h2>
           <p className="text-zinc-400">Manage your secure file transfer protocol (SFTP) access credentials.</p>
@@ -98,8 +98,8 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
 
         {!sftpInfo ? (
           <div className="qx-glass border border-white/[0.07] p-8 rounded-2xl flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-cyan-400/10 rounded-2xl flex items-center justify-center mb-4 border border-cyan-400/20">
-              <ShieldCheck className="w-8 h-8 text-cyan-300" />
+            <div className="w-16 h-16 bg-accent-10 rounded-2xl flex items-center justify-center mb-4 border border-accent-20">
+              <ShieldCheck className="w-8 h-8 text-accent" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2">No SFTP Account Found</h3>
             <p className="text-zinc-400 max-w-md mb-6">
@@ -118,7 +118,7 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
               <div className="qx-glass border border-white/[0.07] rounded-2xl p-6 relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <h3 className="text-lg font-bold text-white mb-6 flex items-center">
-                  <Key className="w-5 h-5 mr-2 text-cyan-300" /> Connection Info
+                  <Key className="w-5 h-5 mr-2 text-accent" /> Connection Info
                 </h3>
                 
                 <div className="space-y-5 relative z-10">
@@ -240,7 +240,7 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
                 <h3 className="text-lg font-bold text-white mb-4">How to connect</h3>
                 <div className="space-y-4 text-sm text-zinc-400 leading-relaxed">
                   <p>
-                    You can connect to your server's files using an SFTP client such as <a href="https://filezilla-project.org/" target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline">FileZilla</a>, <a href="https://winscp.net/" target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline">WinSCP</a>, or <a href="https://cyberduck.io/" target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline">Cyberduck</a>.
+                    You can connect to your server's files using an SFTP client such as <a href="https://filezilla-project.org/" target="_blank" rel="noreferrer" className="text-accent hover:underline">FileZilla</a>, <a href="https://winscp.net/" target="_blank" rel="noreferrer" className="text-accent hover:underline">WinSCP</a>, or <a href="https://cyberduck.io/" target="_blank" rel="noreferrer" className="text-accent hover:underline">Cyberduck</a>.
                   </p>
                   <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
                     <p className="font-semibold text-zinc-300 mb-2">Quick steps:</p>
@@ -252,8 +252,8 @@ export default function ServerSFTP({ serverId, server }: { serverId: string, ser
                       <li>Click Connect. You may be asked to trust the host key on your first connection.</li>
                     </ol>
                   </div>
-                  <div className="p-4 bg-cyan-400/5 border border-cyan-400/20 rounded-xl text-cyan-200/70">
-                    <strong className="text-cyan-300">Note:</strong> Your SFTP access is isolated. You can only view and modify files within this specific server's directory.
+                  <div className="p-4 bg-accent-5 border border-accent-20 rounded-xl text-accent-light/70">
+                    <strong className="text-accent">Note:</strong> Your SFTP access is isolated. You can only view and modify files within this specific server's directory.
                   </div>
                 </div>
               </div>

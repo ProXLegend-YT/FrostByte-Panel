@@ -76,7 +76,7 @@ export default function ServerList() {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
         <div>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-lg">Instances</h1>
-          <p className="text-cyan-300/80 font-bold uppercase tracking-widest text-sm mt-2">Manage and monitor your server fleet.</p>
+          <p className="text-accent-80 font-bold uppercase tracking-widest text-sm mt-2">Manage and monitor your server fleet.</p>
         </div>
         {canCreateServers && (
           <Link to="/servers/create" className="px-5 py-2.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10 text-sm whitespace-nowrap inline-flex items-center self-start md:self-auto">
@@ -96,12 +96,12 @@ export default function ServerList() {
             <Link to={`/servers/${server.id}`} className="block flex-1 z-10 relative">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-2xl bg-black/35 border border-white/10 flex items-center justify-center group-hover:border-cyan-400/40 group-hover:bg-cyan-400/20 transition-all shadow-inner relative overflow-hidden">
+                  <div className="w-14 h-14 rounded-2xl bg-black/35 border border-white/10 flex items-center justify-center group-hover:border-accent-40 group-hover:bg-accent-20 transition-all shadow-inner relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <Server className="w-7 h-7 text-zinc-400 group-hover:text-cyan-300 transition-colors relative z-10" />
+                    <Server className="w-7 h-7 text-zinc-400 group-hover:text-accent transition-colors relative z-10" />
                   </div>
                   <div>
-                    <h2 className="font-bold tracking-tight text-white text-xl group-hover:text-cyan-300 transition-colors drop-shadow-sm">{server.name}</h2>
+                    <h2 className="font-bold tracking-tight text-white text-xl group-hover:text-accent transition-colors drop-shadow-sm">{server.name}</h2>
                     <div className="flex items-center mt-1.5 space-x-2">
                        <span className="flex h-2.5 w-2.5 relative">
                           {server.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
@@ -149,7 +149,7 @@ export default function ServerList() {
               
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 py-4 border-y border-white/10 my-4 text-sm mt-auto bg-black/20 rounded-xl px-4">
                 <div>
-                  <p className="text-cyan-300/80 text-[10px] md:text-[11px] mb-1 font-bold uppercase tracking-[0.15em] drop-shadow-sm">CPU Limit</p>
+                  <p className="text-accent-80 text-[10px] md:text-[11px] mb-1 font-bold uppercase tracking-[0.15em] drop-shadow-sm">CPU Limit</p>
                   <p className="font-mono text-white font-bold text-xs md:text-sm">{server.cpu || 100} <span className="text-zinc-500 opacity-70">%</span></p>
                 </div>
                 <div>

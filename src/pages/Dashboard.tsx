@@ -40,7 +40,7 @@ export default function Dashboard() {
       <motion.div
         animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full"
+        className="w-12 h-12 border-2 border-accent border-t-transparent rounded-full"
       />
     </div>
   );
@@ -83,15 +83,15 @@ export default function Dashboard() {
       </div>
       
       <motion.div variants={container} initial="hidden" animate="show" className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-2 lg:max-w-3xl'} gap-5 mb-12`}>
-        <StatCard title="Total Servers" value={servers.length.toString()} icon={<Server size={22} className="text-cyan-300" />} trend={createdThisWeek > 0 ? `+${createdThisWeek} this week` : "No new servers this week"} chartColor="from-cyan-400 to-cyan-400/0" />
+        <StatCard title="Total Servers" value={servers.length.toString()} icon={<Server size={22} className="text-accent" />} trend={createdThisWeek > 0 ? `+${createdThisWeek} this week` : "No new servers this week"} chartColor="from-cyan-400 to-cyan-400/0" />
         <StatCard title="Running Servers" value={runningServers.toString()} icon={<Activity size={22} className="text-emerald-400" />} trend="Active now" chartColor="from-emerald-500 to-emerald-500/0" />
         {isAdmin && (
           <>
             <StatCard
               title="Dedicated CPU Usage"
               value={`${stats.cpuUsage}%`}
-              icon={<Cpu size={22} className="text-sky-400" />}
-              chartColor="from-sky-500 to-sky-500/0"
+              icon={<Cpu size={22} className="text-accent-light" />}
+              chartColor="from-accent to-accent/0"
               spark={cpuHistory.length >= 2 && <Sparkline data={cpuHistory} color="#38bdf8" max={100} cap={HISTORY_CAP} w={100} h={30} />}
             />
             <StatCard
@@ -114,7 +114,7 @@ export default function Dashboard() {
 
       <div className="flex items-center justify-between mb-6 mt-14">
         <h2 className="text-xl font-bold tracking-tight text-white">Your Servers</h2>
-        <Link to="/servers" className="text-sm font-medium text-cyan-300 hover:text-cyan-200 flex items-center transition-colors">
+        <Link to="/servers" className="text-sm font-medium text-accent hover:text-accent flex items-center transition-colors">
           View all <ChevronRight size={16} className="ml-1" />
         </Link>
       </div>
@@ -144,9 +144,9 @@ export default function Dashboard() {
                 <Link to={`/servers/${server.id}`} className="flex items-center justify-between p-5 md:p-6 hover:bg-white/5 transition-all group relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/0 to-cyan-400/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="flex items-center gap-5 relative z-10">
-                    <div className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 flex items-center justify-center group-hover:border-cyan-400/40 group-hover:bg-cyan-400/20 transition-all shadow-inner relative overflow-hidden">
+                    <div className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 flex items-center justify-center group-hover:border-accent-40 group-hover:bg-accent-20 transition-all shadow-inner relative overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <Server className="w-6 h-6 text-zinc-400 group-hover:text-cyan-300 transition-colors relative z-10" />
+                      <Server className="w-6 h-6 text-zinc-400 group-hover:text-accent transition-colors relative z-10" />
                     </div>
                     <div>
                       <h3 className="font-bold text-zinc-100 group-hover:text-white transition-colors text-lg tracking-tight drop-shadow-sm">{server.name}</h3>
@@ -173,7 +173,7 @@ export default function Dashboard() {
       </motion.div>
 
       <div className="flex items-center gap-2 mb-6 mt-14">
-        <History size={20} className="text-cyan-300" />
+        <History size={20} className="text-accent" />
         <h2 className="text-xl font-bold tracking-tight text-white">Recent Activity</h2>
       </div>
       <ActivityFeed limit={10} />

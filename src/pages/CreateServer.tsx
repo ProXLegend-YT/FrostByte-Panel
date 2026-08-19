@@ -40,7 +40,7 @@ const MINECRAFT_SUBTYPE_META: Record<string, { icon: React.ElementType; color: s
   FORGE: { icon: Wrench, color: "text-stone-400", bg: "bg-stone-400/10", border: "border-stone-400/20", ring: "ring-stone-500/50", glow: "to-stone-500/10" },
   FABRIC: { icon: Feather, color: "text-amber-200", bg: "bg-amber-200/10", border: "border-amber-200/20", ring: "ring-amber-300/50", glow: "to-amber-300/10" },
   VANILLA: { icon: Box, color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", ring: "ring-emerald-500/50", glow: "to-emerald-500/10" },
-  VELOCITY: { icon: FastForward, color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/20", ring: "ring-cyan-500/50", glow: "to-cyan-500/10" },
+  VELOCITY: { icon: FastForward, color: "text-accent", bg: "bg-accent-10", border: "border-accent-20", ring: "ring-accent-50", glow: "to-cyan-500/10" },
   BUNGEECORD: { icon: Network, color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20", ring: "ring-orange-500/50", glow: "to-orange-500/10" },
 };
 
@@ -244,22 +244,22 @@ export default function CreateServer() {
 
       {/* Step indicator */}
       <div className="flex items-center gap-3 mb-8">
-        <div className={`flex items-center gap-2 ${step >= 0 ? "text-cyan-300" : "text-zinc-600"}`}>
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 0 ? "bg-cyan-400/20 border-cyan-400/40" : "border-white/10"}`}>
+        <div className={`flex items-center gap-2 ${step >= 0 ? "text-accent" : "text-zinc-600"}`}>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 0 ? "bg-accent-20 border-accent-40" : "border-white/10"}`}>
             {step > 0 ? <Check size={14} /> : "1"}
           </div>
           <span className="text-sm font-semibold hidden sm:inline">Template</span>
         </div>
-        <div className={`flex-1 h-px ${step >= 1 ? "bg-cyan-400/40" : "bg-white/10"}`} />
-        <div className={`flex items-center gap-2 ${step >= 1 ? "text-cyan-300" : "text-zinc-600"}`}>
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 1 ? "bg-cyan-400/20 border-cyan-400/40" : "border-white/10"}`}>
+        <div className={`flex-1 h-px ${step >= 1 ? "bg-accent-40" : "bg-white/10"}`} />
+        <div className={`flex items-center gap-2 ${step >= 1 ? "text-accent" : "text-zinc-600"}`}>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 1 ? "bg-accent-20 border-accent-40" : "border-white/10"}`}>
             {step > 1 ? <Check size={14} /> : "2"}
           </div>
           <span className="text-sm font-semibold hidden sm:inline">Choose Game</span>
         </div>
-        <div className={`flex-1 h-px ${step >= 2 ? "bg-cyan-400/40" : "bg-white/10"}`} />
-        <div className={`flex items-center gap-2 ${step >= 2 ? "text-cyan-300" : "text-zinc-600"}`}>
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 2 ? "bg-cyan-400/20 border-cyan-400/40" : "border-white/10"}`}>
+        <div className={`flex-1 h-px ${step >= 2 ? "bg-accent-40" : "bg-white/10"}`} />
+        <div className={`flex items-center gap-2 ${step >= 2 ? "text-accent" : "text-zinc-600"}`}>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 2 ? "bg-accent-20 border-accent-40" : "border-white/10"}`}>
             2
           </div>
           <span className="text-sm font-semibold hidden sm:inline">Configure</span>
@@ -277,7 +277,7 @@ export default function CreateServer() {
           >
             {loadingTemplates ? (
               <div className="flex justify-center py-20">
-                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               </div>
             ) : templates.length === 0 ? (
               <div className="text-center py-4">
@@ -299,16 +299,16 @@ export default function CreateServer() {
                       <button
                         key={t.id}
                         onClick={() => selectTemplate(t)}
-                        className="text-left bg-black/40 glass-panel border border-white/10 hover:border-cyan-400/40 rounded-2xl p-6 transition-all group relative overflow-hidden"
+                        className="text-left bg-black/40 glass-panel border border-white/10 hover:border-accent-40 rounded-2xl p-6 transition-all group relative overflow-hidden"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center mb-4 group-hover:border-cyan-400/40 group-hover:bg-cyan-400/10 transition-all relative z-10">
-                          <Icon className="w-6 h-6 text-zinc-400 group-hover:text-cyan-300 transition-colors" />
+                        <div className="w-12 h-12 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center mb-4 group-hover:border-accent-40 group-hover:bg-accent-10 transition-all relative z-10">
+                          <Icon className="w-6 h-6 text-zinc-400 group-hover:text-accent transition-colors" />
                         </div>
-                        <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors relative z-10">{t.name}</h3>
+                        <h3 className="text-lg font-bold text-white group-hover:text-accent transition-colors relative z-10">{t.name}</h3>
                         <p className="text-sm text-zinc-500 mt-1 relative z-10">
                           {t.description || `${gameDef?.name || t.game}${t.version ? ` · ${t.version}` : ""}`}
                         </p>
-                        <div className="mt-4 flex items-center text-xs font-semibold text-cyan-400/80 relative z-10">
+                        <div className="mt-4 flex items-center text-xs font-semibold text-accent-80 relative z-10">
                           Use Template <ArrowRight size={13} className="ml-1 group-hover:translate-x-1 transition-transform" />
                         </div>
                       </button>
@@ -336,7 +336,7 @@ export default function CreateServer() {
           >
             {loadingGames ? (
               <div className="flex justify-center py-20">
-                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -346,15 +346,15 @@ export default function CreateServer() {
                     <button
                       key={game.id}
                       onClick={() => selectGame(game)}
-                      className="text-left bg-black/40 glass-panel border border-white/10 hover:border-cyan-400/40 rounded-2xl p-6 transition-all group relative overflow-hidden"
+                      className="text-left bg-black/40 glass-panel border border-white/10 hover:border-accent-40 rounded-2xl p-6 transition-all group relative overflow-hidden"
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/0 to-transparent opacity-0 group-hover:opacity-10 transition-opacity" />
-                      <div className="w-12 h-12 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center mb-4 group-hover:border-cyan-400/40 group-hover:bg-cyan-400/10 transition-all relative z-10">
-                        <Icon className="w-6 h-6 text-zinc-400 group-hover:text-cyan-300 transition-colors" />
+                      <div className="w-12 h-12 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center mb-4 group-hover:border-accent-40 group-hover:bg-accent-10 transition-all relative z-10">
+                        <Icon className="w-6 h-6 text-zinc-400 group-hover:text-accent transition-colors" />
                       </div>
-                      <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors relative z-10">{game.name}</h3>
+                      <h3 className="text-lg font-bold text-white group-hover:text-accent transition-colors relative z-10">{game.name}</h3>
                       <p className="text-sm text-zinc-500 mt-1 relative z-10">{game.description}</p>
-                      <div className="mt-4 flex items-center text-xs font-semibold text-cyan-400/80 relative z-10">
+                      <div className="mt-4 flex items-center text-xs font-semibold text-accent-80 relative z-10">
                         Select <ArrowRight size={13} className="ml-1 group-hover:translate-x-1 transition-transform" />
                       </div>
                     </button>
@@ -375,20 +375,20 @@ export default function CreateServer() {
           >
             <button
               onClick={() => setStep(1)}
-              className="inline-flex items-center text-xs font-medium text-zinc-500 hover:text-cyan-300 transition-colors mb-4"
+              className="inline-flex items-center text-xs font-medium text-zinc-500 hover:text-accent transition-colors mb-4"
             >
               <ArrowLeft size={13} className="mr-1.5" /> Change game ({selectedGame.name})
             </button>
 
             <form onSubmit={handleSubmit} className="bg-[#0a0a0c] glass-panel p-6 md:p-8 rounded-2xl border border-white/5 shadow-2xl relative">
               <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-400/5 blur-[60px] rounded-full" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-accent-5 blur-[60px] rounded-full" />
               </div>
 
               <div className="space-y-8 relative z-10">
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                    <Server className="w-4 h-4 mr-2 text-cyan-300" /> Instance Name
+                    <Server className="w-4 h-4 mr-2 text-accent" /> Instance Name
                   </label>
                   <input
                     type="text"
@@ -396,7 +396,7 @@ export default function CreateServer() {
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="My awesome server"
-                    className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none"
+                    className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none"
                   />
                 </div>
 
@@ -404,11 +404,11 @@ export default function CreateServer() {
                 {selectedGame.subtypes && selectedGame.subtypes.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-3 flex items-center">
-                      <Box className="w-4 h-4 mr-2 text-cyan-300" /> {selectedGame.id === "minecraft" ? "Server Software" : "Runtime"}
+                      <Box className="w-4 h-4 mr-2 text-accent" /> {selectedGame.id === "minecraft" ? "Server Software" : "Runtime"}
                     </label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {selectedGame.subtypes.map((sub) => {
-                        const meta = MINECRAFT_SUBTYPE_META[sub.id] || { icon: Box, color: "text-cyan-300", bg: "bg-cyan-400/10", border: "border-cyan-400/20", ring: "ring-cyan-500/50", glow: "to-cyan-500/10" };
+                        const meta = MINECRAFT_SUBTYPE_META[sub.id] || { icon: Box, color: "text-accent", bg: "bg-accent-10", border: "border-accent-20", ring: "ring-accent-50", glow: "to-cyan-500/10" };
                         const Icon = meta.icon;
                         const isSelected = type === sub.id;
                         return (
@@ -436,7 +436,7 @@ export default function CreateServer() {
                 {selectedGame.id !== "discord-bot" && versions.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <Box className="w-4 h-4 mr-2 text-cyan-400" /> Version
+                      <Box className="w-4 h-4 mr-2 text-accent" /> Version
                     </label>
                     <SearchableDropdown
                       value={version}
@@ -454,27 +454,27 @@ export default function CreateServer() {
                   <>
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                        <KeyRound className="w-4 h-4 mr-2 text-cyan-300" /> Discord Bot Token
+                        <KeyRound className="w-4 h-4 mr-2 text-accent" /> Discord Bot Token
                       </label>
                       <input
                         type="password"
                         value={discordToken}
                         onChange={e => setDiscordToken(e.target.value)}
                         placeholder="Paste your bot token"
-                        className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                        className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                       />
                       <p className="text-xs text-zinc-500 mt-2">Stored as an environment variable inside your container. Never shared with other users.</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                        <Terminal className="w-4 h-4 mr-2 text-cyan-300" /> Start Command
+                        <Terminal className="w-4 h-4 mr-2 text-accent" /> Start Command
                       </label>
                       <input
                         type="text"
                         value={startCommand}
                         onChange={e => setStartCommand(e.target.value)}
                         placeholder={type === "PYTHON" ? "pip install -r requirements.txt && python bot.py" : "npm install && node index.js"}
-                        className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono text-sm"
+                        className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono text-sm"
                       />
                       <p className="text-xs text-zinc-500 mt-2">Upload your bot's code via the file manager after creation, then start the server.</p>
                     </div>
@@ -485,14 +485,14 @@ export default function CreateServer() {
                 {["rust", "valheim", "ark", "palworld"].includes(selectedGame.id) && (
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <KeyRound className="w-4 h-4 mr-2 text-cyan-300" /> Server Password
+                      <KeyRound className="w-4 h-4 mr-2 text-accent" /> Server Password
                     </label>
                     <input
                       type="password"
                       value={serverPassword}
                       onChange={e => setServerPassword(e.target.value)}
                       placeholder={selectedGame.id === "valheim" ? "At least 5 characters (required)" : "Leave blank for no password"}
-                      className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                      className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
                     {selectedGame.id === "valheim" && (
                       <p className="text-xs text-zinc-500 mt-2">Valheim requires a password of at least 5 characters — the server won't start without one.</p>
@@ -504,14 +504,14 @@ export default function CreateServer() {
                 {selectedGame.id === "cs2" && (
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <KeyRound className="w-4 h-4 mr-2 text-cyan-300" /> Steam Game Server Token
+                      <KeyRound className="w-4 h-4 mr-2 text-accent" /> Steam Game Server Token
                     </label>
                     <input
                       type="password"
                       value={srcdsToken}
                       onChange={e => setSrcdsToken(e.target.value)}
                       placeholder="Get one from steamcommunity.com/dev/managegameservers"
-                      className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                      className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
                     <p className="text-xs text-zinc-500 mt-2">Required for the server to appear in the public server browser. Leave blank for a LAN-only/private server.</p>
                   </div>
@@ -520,7 +520,7 @@ export default function CreateServer() {
                 {/* Resources */}
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-3 flex items-center">
-                    <MemoryStick className="w-4 h-4 mr-2 text-cyan-300" /> Memory (RAM)
+                    <MemoryStick className="w-4 h-4 mr-2 text-accent" /> Memory (RAM)
                   </label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {visibleRamPresets.map(val => (
@@ -529,7 +529,7 @@ export default function CreateServer() {
                         type="button"
                         onClick={() => handleRamSelect(val)}
                         className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                          Number(ram) === val ? "bg-cyan-400/20 border border-cyan-400/40 text-cyan-300" : "bg-white/[0.02] border border-white/10 text-zinc-400 hover:border-white/20"
+                          Number(ram) === val ? "bg-accent-20 border border-accent-40 text-accent" : "bg-white/[0.02] border border-white/10 text-zinc-400 hover:border-white/20"
                         }`}
                       >
                         {val}GB
@@ -550,7 +550,7 @@ export default function CreateServer() {
                         setRam(next);
                       }
                     }}
-                    className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                    className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                   />
                   {!isAdmin && (
                     <p className="text-xs text-zinc-500 mt-2">Your account is limited to {userRamCap}GB RAM per server.</p>
@@ -560,7 +560,7 @@ export default function CreateServer() {
                 <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <Cpu className="w-4 h-4 mr-2 text-cyan-300" /> CPU Limit (%)
+                      <Cpu className="w-4 h-4 mr-2 text-accent" /> CPU Limit (%)
                     </label>
                     <input
                       type="number"
@@ -576,7 +576,7 @@ export default function CreateServer() {
                           setCpu(next);
                         }
                       }}
-                      className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                      className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
                     {!isAdmin && (
                       <p className="text-xs text-zinc-500 mt-2">Capped at {user?.maxCpuPercent ?? 200}%.</p>
@@ -584,7 +584,7 @@ export default function CreateServer() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <HardDrive className="w-4 h-4 mr-2 text-cyan-300" /> Disk (GB)
+                      <HardDrive className="w-4 h-4 mr-2 text-accent" /> Disk (GB)
                     </label>
                     <input
                       type="number"
@@ -600,7 +600,7 @@ export default function CreateServer() {
                           setDisk(next);
                         }
                       }}
-                      className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                      className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
                     {!isAdmin && (
                       <p className="text-xs text-zinc-500 mt-2">Capped at {user?.maxDiskGb ?? 10}GB.</p>
@@ -611,14 +611,14 @@ export default function CreateServer() {
                 <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <Network className="w-4 h-4 mr-2 text-cyan-300" /> Port
+                      <Network className="w-4 h-4 mr-2 text-accent" /> Port
                     </label>
                     <input
                       type="number"
                       required
                       value={port}
                       onChange={e => { setPort(e.target.value); setError(null); }}
-                      className={`w-full bg-white/[0.02] border focus:ring-1 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono ${error?.includes("Port") ? "border-red-500 focus:border-red-500 focus:ring-red-500/50" : "border-white/10 focus:border-cyan-500 focus:ring-cyan-400/50"}`}
+                      className={`w-full bg-white/[0.02] border focus:ring-1 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono ${error?.includes("Port") ? "border-red-500 focus:border-red-500 focus:ring-red-500/50" : "border-white/10 focus:border-accent focus:ring-accent-50"}`}
                     />
                     {error?.includes("Port") && (
                       <p className="mt-2 text-sm text-red-400 flex items-center">
@@ -628,14 +628,14 @@ export default function CreateServer() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <Globe className="w-4 h-4 mr-2 text-cyan-300" /> IP Alias
+                      <Globe className="w-4 h-4 mr-2 text-accent" /> IP Alias
                     </label>
                     <input
                       type="text"
                       value={ipAlias}
                       onChange={e => setIpAlias(e.target.value)}
                       placeholder="e.g. play.example.com"
-                      className="w-full bg-white/[0.02] border border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400/50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
+                      className="w-full bg-white/[0.02] border border-white/10 focus:border-accent focus:ring-1 focus:ring-accent-50 rounded-xl px-4 py-3 text-white transition-all shadow-inner outline-none font-mono"
                     />
                   </div>
                 </div>
@@ -643,7 +643,7 @@ export default function CreateServer() {
                 {isAdmin && (
                   <div className="relative z-20">
                     <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center">
-                      <User className="w-4 h-4 mr-2 text-cyan-300" /> Assign Server Owner
+                      <User className="w-4 h-4 mr-2 text-accent" /> Assign Server Owner
                     </label>
                     <SearchableDropdown
                       value={owner}
@@ -660,13 +660,13 @@ export default function CreateServer() {
                   {loading && (
                     <div className="mb-6 p-4 border border-zinc-800 bg-black/20 rounded-xl">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-cyan-300">
+                        <span className="text-sm font-medium text-accent">
                           {selectedGame.id === "discord-bot" ? "Provisioning bot container..." : `Downloading ${version} and creating container...`}
                         </span>
-                        <span className="text-sm font-mono text-cyan-300/80">{Math.round(createProgress)}%</span>
+                        <span className="text-sm font-mono text-accent-80">{Math.round(createProgress)}%</span>
                       </div>
                       <div className="w-full bg-zinc-800/50 rounded-full h-2.5 overflow-hidden">
-                        <div className="bg-cyan-500 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${createProgress}%` }}></div>
+                        <div className="bg-accent h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${createProgress}%` }}></div>
                       </div>
                     </div>
                   )}

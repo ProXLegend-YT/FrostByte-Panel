@@ -661,7 +661,7 @@ export default function ServerConsole({ serverId, server, onPlayersChange }: Ser
     else if (level === "warn") { text = "text-amber-300/90"; rail = "bg-amber-400/70"; }
     else if (log.startsWith(">")) { text = "text-emerald-300 font-semibold"; rail = "bg-emerald-400/70"; }
     else if (log.startsWith("[System")) { text = "text-emerald-300/75 italic"; rail = "bg-emerald-400/60"; }
-    else if (log.includes("INFO")) { text = "text-sky-200/85"; rail = "bg-sky-500/50"; }
+    else if (log.includes("INFO")) { text = "text-accent-light/85"; rail = "bg-accent-50"; }
 
     return (
       <span className={`flex-1 flex items-stretch min-w-0`}>

@@ -26,7 +26,7 @@ interface ScheduledTask {
 
 const ACTION_META: Record<ScheduledTask["action"], { label: string; icon: React.ReactNode; color: string }> = {
   restart: { label: "Restart server", icon: <RefreshCw className="w-4 h-4" />, color: "text-orange-400" },
-  backup: { label: "Create backup", icon: <Archive className="w-4 h-4" />, color: "text-cyan-400" },
+  backup: { label: "Create backup", icon: <Archive className="w-4 h-4" />, color: "text-accent" },
   command: { label: "Run command", icon: <Terminal className="w-4 h-4" />, color: "text-violet-400" },
   stop: { label: "Stop server", icon: <Square className="w-4 h-4" />, color: "text-red-400" },
   start: { label: "Start server", icon: <Play className="w-4 h-4" />, color: "text-emerald-400" },
@@ -164,9 +164,9 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 flex items-center">
-              <Clock className="w-6 h-6 mr-2 text-cyan-400" /> Scheduled Tasks
+              <Clock className="w-6 h-6 mr-2 text-accent" /> Scheduled Tasks
             </h2>
-            <p className="text-[11px] font-bold text-cyan-300/80 uppercase tracking-widest mt-1">
+            <p className="text-[11px] font-bold text-accent-80 uppercase tracking-widest mt-1">
               Automate restarts, backups, and commands on a recurring schedule.
             </p>
           </div>
@@ -187,7 +187,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nightly backup"
-                className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-accent transition-colors"
               />
             </div>
 
@@ -199,7 +199,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                     key={a}
                     onClick={() => setAction(a)}
                     className={`px-3 py-2.5 rounded-lg text-xs font-medium flex flex-col items-center gap-1.5 transition-colors border ${
-                      action === a ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" : "bg-white/[0.02] border-white/10 text-zinc-400 hover:border-white/20"
+                      action === a ? "bg-accent-15 border-accent-40 text-accent" : "bg-white/[0.02] border-white/10 text-zinc-400 hover:border-white/20"
                     }`}
                   >
                     {ACTION_META[a].icon}
@@ -217,7 +217,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                   value={commandText}
                   onChange={(e) => setCommandText(e.target.value)}
                   placeholder="say Server restarting in 5 minutes"
-                  className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white font-mono placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full bg-white/[0.02] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white font-mono placeholder-zinc-500 focus:outline-none focus:border-accent transition-colors"
                 />
                 <p className="text-xs text-zinc-500 mt-2">Only runs while the server is online — skipped otherwise.</p>
               </div>
@@ -231,7 +231,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                     key={f}
                     onClick={() => setFrequency(f)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
-                      frequency === f ? "bg-cyan-500/20 text-cyan-300" : "bg-white/[0.03] text-zinc-400 hover:text-zinc-200"
+                      frequency === f ? "bg-accent-20 text-accent" : "bg-white/[0.03] text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     {f}
@@ -248,7 +248,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                     max={10080}
                     value={intervalMinutes}
                     onChange={(e) => setIntervalMinutes(Number(e.target.value))}
-                    className="w-24 bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white focus:outline-none focus:border-cyan-500"
+                    className="w-24 bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white focus:outline-none focus:border-accent"
                   />
                   <span className="text-sm text-zinc-400">minutes</span>
                 </div>
@@ -258,7 +258,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                     <select
                       value={dayOfWeek}
                       onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                      className="bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white focus:outline-none focus:border-cyan-500"
+                      className="bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white focus:outline-none focus:border-accent"
                     >
                       {WEEKDAYS.map((d, i) => (
                         <option key={d} value={i} className="bg-zinc-900">{d}</option>
@@ -272,7 +272,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                     max={23}
                     value={hour}
                     onChange={(e) => setHour(Number(e.target.value))}
-                    className="w-16 bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white text-center focus:outline-none focus:border-cyan-500"
+                    className="w-16 bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white text-center focus:outline-none focus:border-accent"
                   />
                   <span className="text-sm text-zinc-400">:</span>
                   <input
@@ -281,7 +281,7 @@ export default function ScheduledTasks({ serverId }: { serverId: string }) {
                     max={59}
                     value={minute}
                     onChange={(e) => setMinute(Number(e.target.value))}
-                    className="w-16 bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white text-center focus:outline-none focus:border-cyan-500"
+                    className="w-16 bg-white/[0.02] border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white text-center focus:outline-none focus:border-accent"
                   />
                   <span className="text-xs text-zinc-500">(server's local time)</span>
                 </div>

@@ -42,7 +42,7 @@ export default function PlayerManager({ serverId, players }: { serverId: string,
         <button
           onClick={refreshList}
           disabled={refreshing}
-          className="qx-mono text-[9px] text-slate-500 hover:text-cyan-300 uppercase tracking-widest disabled:opacity-40 transition-colors"
+          className="qx-mono text-[9px] text-slate-500 hover:text-accent uppercase tracking-widest disabled:opacity-40 transition-colors"
         >
           {refreshing ? "Refreshing…" : "Refresh"}
         </button>

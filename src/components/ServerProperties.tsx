@@ -116,7 +116,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <RefreshCw className="w-5 h-5 text-cyan-500 animate-spin" />
+        <RefreshCw className="w-5 h-5 text-accent animate-spin" />
       </div>
     );
   }
@@ -139,12 +139,12 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-md">Properties</h2>
-            <p className="text-cyan-300/80 font-bold uppercase tracking-widest text-xs mt-1">Configure core server rules and settings</p>
+            <p className="text-accent-80 font-bold uppercase tracking-widest text-xs mt-1">Configure core server rules and settings</p>
           </div>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-5 py-2.5 bg-sky-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all flex items-center disabled:opacity-50 shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_20px_rgba(56,189,248,0.5)] ring-1 ring-white/10"
+            className="px-5 py-2.5 bg-accent-dark hover:bg-accent text-white font-bold rounded-xl transition-all flex items-center disabled:opacity-50 shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_20px_rgba(56,189,248,0.5)] ring-1 ring-white/10"
           >
             <Save className="w-4 h-4 mr-2" />
             {isSaving ? 'Saving...' : 'Save Changes'}
@@ -155,12 +155,12 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
           {COMMON_PROPERTIES.map((prop) => (
             <div key={prop.key} className="bg-black/40 backdrop-blur-sm border border-white/10 p-5 rounded-2xl shadow-[0_0_30px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/5 relative overflow-hidden group hover:bg-black/35 transition-colors">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-cyan-200 uppercase tracking-widest drop-shadow-sm mb-2 block">{prop.label}</label>
+                <label className="text-xs font-bold text-accent-light uppercase tracking-widest drop-shadow-sm mb-2 block">{prop.label}</label>
                 {prop.type === 'boolean' && (
                   <button
                     onClick={() => handleChange(prop.key, properties[prop.key] === 'true' ? 'false' : 'true')}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                        properties[prop.key] === 'true' ? 'bg-cyan-500' : 'bg-zinc-700'
+                        properties[prop.key] === 'true' ? 'bg-accent' : 'bg-zinc-700'
                     }`}
                   >
                     <span
@@ -176,7 +176,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                 <select
                   value={properties[prop.key] || ''}
                   onChange={(e) => handleChange(prop.key, e.target.value)}
-                  className="w-full bg-black/35 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
+                  className="w-full bg-black/35 border border-white/10 focus:border-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
                 >
                   {prop.options?.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -189,7 +189,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                   type="number"
                   value={properties[prop.key] || ''}
                   onChange={(e) => handleChange(prop.key, e.target.value)}
-                  className="w-full bg-black/35 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
+                  className="w-full bg-black/35 border border-white/10 focus:border-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
                 />
               )}
 
@@ -198,7 +198,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                   type="text"
                   value={properties[prop.key] || ''}
                   onChange={(e) => handleChange(prop.key, e.target.value)}
-                  className="w-full bg-black/35 border border-white/10 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
+                  className="w-full bg-black/35 border border-white/10 focus:border-accent rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none shadow-inner transition-colors"
                 />
               )}
 
@@ -218,7 +218,7 @@ export default function ServerProperties({ serverId }: { serverId: string }) {
                     type="text"
                     value={properties[key]}
                     onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full bg-[#0a0a0c] border border-white/10 focus:border-cyan-500 rounded-lg px-3 py-1.5 text-sm text-white outline-none font-mono"
+                    className="w-full bg-[#0a0a0c] border border-white/10 focus:border-accent rounded-lg px-3 py-1.5 text-sm text-white outline-none font-mono"
                   />
                 </div>
               ))}

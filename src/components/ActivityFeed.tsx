@@ -17,25 +17,25 @@ interface ActivityEntry {
 }
 
 const ACTION_META: Record<string, { label: (e: ActivityEntry) => string; icon: React.ReactNode; color: string }> = {
-  "auth.register": { label: (e) => `${e.actorUsername} created an account`, icon: <UserPlus size={15} />, color: "text-cyan-300" },
-  "server.create": { label: (e) => `${e.actorUsername} created server "${e.target}"`, icon: <Server size={15} />, color: "text-cyan-300" },
+  "auth.register": { label: (e) => `${e.actorUsername} created an account`, icon: <UserPlus size={15} />, color: "text-accent" },
+  "server.create": { label: (e) => `${e.actorUsername} created server "${e.target}"`, icon: <Server size={15} />, color: "text-accent" },
   "server.delete": { label: (e) => `${e.actorUsername} deleted server "${e.target}"`, icon: <Trash2 size={15} />, color: "text-red-400" },
   "server.start": { label: (e) => `${e.actorUsername} started "${e.target}"`, icon: <Play size={15} />, color: "text-emerald-400" },
   "server.stop": { label: (e) => `${e.actorUsername} stopped "${e.target}"`, icon: <Square size={15} />, color: "text-red-400" },
   "server.restart": { label: (e) => `${e.actorUsername} restarted "${e.target}"`, icon: <RefreshCw size={15} />, color: "text-orange-400" },
   "server.owner_change": { label: (e) => `${e.actorUsername} changed the owner of "${e.target}"`, icon: <Users size={15} />, color: "text-violet-400" },
-  "server.version_change": { label: (e) => `${e.actorUsername} changed version on "${e.target}"`, icon: <Settings size={15} />, color: "text-cyan-300" },
+  "server.version_change": { label: (e) => `${e.actorUsername} changed version on "${e.target}"`, icon: <Settings size={15} />, color: "text-accent" },
   "server.resource_change": { label: (e) => `${e.actorUsername} adjusted resource limits on "${e.target}"`, icon: <Cpu size={15} />, color: "text-violet-400" },
   "file.delete": { label: (e) => `${e.actorUsername} deleted file(s): ${e.target}`, icon: <FileX size={15} />, color: "text-red-400" },
   "backup.create": { label: (e) => `${e.actorUsername} created a backup of "${e.target}"`, icon: <Archive size={15} />, color: "text-emerald-400" },
   "backup.delete": { label: (e) => `${e.actorUsername} deleted a backup: ${e.target}`, icon: <Trash2 size={15} />, color: "text-red-400" },
-  "sftp.create": { label: (e) => `${e.actorUsername} created SFTP credentials`, icon: <KeyRound size={15} />, color: "text-cyan-300" },
-  "sftp.reset": { label: (e) => `${e.actorUsername} reset SFTP credentials`, icon: <KeyRound size={15} />, color: "text-cyan-300" },
-  "subuser.add": { label: (e) => `${e.actorUsername} added a sub-user to "${e.target}"`, icon: <Users size={15} />, color: "text-cyan-300" },
+  "sftp.create": { label: (e) => `${e.actorUsername} created SFTP credentials`, icon: <KeyRound size={15} />, color: "text-accent" },
+  "sftp.reset": { label: (e) => `${e.actorUsername} reset SFTP credentials`, icon: <KeyRound size={15} />, color: "text-accent" },
+  "subuser.add": { label: (e) => `${e.actorUsername} added a sub-user to "${e.target}"`, icon: <Users size={15} />, color: "text-accent" },
   "subuser.remove": { label: (e) => `${e.actorUsername} removed a sub-user from "${e.target}"`, icon: <Users size={15} />, color: "text-red-400" },
-  "user.create": { label: (e) => `${e.actorUsername} created a user account: ${e.target}`, icon: <UserPlus size={15} />, color: "text-cyan-300" },
+  "user.create": { label: (e) => `${e.actorUsername} created a user account: ${e.target}`, icon: <UserPlus size={15} />, color: "text-accent" },
   "user.delete": { label: (e) => `${e.actorUsername} deleted a user account: ${e.target}`, icon: <Trash2 size={15} />, color: "text-red-400" },
-  "settings.update": { label: (e) => `${e.actorUsername} updated panel settings`, icon: <Settings size={15} />, color: "text-cyan-300" },
+  "settings.update": { label: (e) => `${e.actorUsername} updated panel settings`, icon: <Settings size={15} />, color: "text-accent" },
 };
 
 function timeAgo(iso: string): string {
@@ -73,7 +73,7 @@ export default function ActivityFeed({ limit = 10, serverId }: { limit?: number;
   if (entries === null) {
     return (
       <div className="bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 p-8 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

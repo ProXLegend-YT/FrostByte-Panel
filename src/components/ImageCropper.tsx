@@ -60,13 +60,13 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, aspectRatio =
             <div className="flex gap-2 mb-4">
               <button 
                 onClick={() => setCurrentAspect(16/9)}
-                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${currentAspect === 16/9 ? "bg-cyan-500 text-white" : "bg-white/5 text-zinc-400 hover:bg-white/10"}`}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${currentAspect === 16/9 ? "bg-accent text-white" : "bg-white/5 text-zinc-400 hover:bg-white/10"}`}
               >
                 16:9 (PC)
               </button>
               <button 
                 onClick={() => setCurrentAspect(9/16)}
-                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${currentAspect === 9/16 ? "bg-cyan-500 text-white" : "bg-white/5 text-zinc-400 hover:bg-white/10"}`}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${currentAspect === 9/16 ? "bg-accent text-white" : "bg-white/5 text-zinc-400 hover:bg-white/10"}`}
               >
                 9:16 (Mobile)
               </button>

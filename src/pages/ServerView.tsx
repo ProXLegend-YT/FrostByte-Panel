@@ -34,6 +34,7 @@ export default function ServerView() {
   const [showRamWarning, setShowRamWarning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
@@ -64,10 +65,19 @@ export default function ServerView() {
 
   const executeAction = async (action: string) => {
     setIsProcessing(true);
+    setActionError(null);
     try {
        await axios.post(`/api/servers/${id}/${action}`);
        await fetchServer();
-    } catch(e) {} finally {
+    } catch(e: any) {
+       // Previously this silently swallowed every error, including the
+       // "already starting/stopping" 409 an operation lock now returns —
+       // a double-tap on Start would just do nothing with no feedback,
+       // which reads as a broken button rather than a safety guard working
+       // as intended.
+       setActionError(e.response?.data?.error || `Failed to ${action} server.`);
+       setTimeout(() => setActionError(null), 4000);
+    } finally {
        setIsProcessing(false);
     }
   };
@@ -194,7 +204,8 @@ export default function ServerView() {
              <div className="flex items-center space-x-2 mb-3">
                 <span className="flex h-2 w-2 relative shrink-0">
                    {server.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                   <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-600'}`}></span>
+                   {['starting', 'stopping', 'restarting'].includes(server.status) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>}
+                   <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : ['starting', 'stopping', 'restarting'].includes(server.status) ? 'bg-amber-500' : 'bg-zinc-600'}`}></span>
                 </span>
                 <span className="text-xs font-medium text-zinc-300 capitalize">{server.status}</span>
                 <span className="text-xs text-zinc-600">•</span>
@@ -207,15 +218,15 @@ export default function ServerView() {
              </div>
              <div className="grid grid-cols-2 gap-2">
                 {server.status !== 'online' ? (
-                  <button disabled={isProcessing} onClick={() => { handleAction('start'); setSidebarOpen(false); }} className="col-span-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg transition-all border border-emerald-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
+                  <button disabled={isProcessing || ['starting', 'stopping', 'restarting'].includes(server.status)} onClick={() => { handleAction('start'); setSidebarOpen(false); }} className="col-span-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg transition-all border border-emerald-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
                     {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin mr-1.5" /> : <Play className="w-3.5 h-3.5 mr-1.5" />} Start
                   </button>
                 ) : (
-                  <button disabled={isProcessing} onClick={() => { handleAction('stop'); setSidebarOpen(false); }} className="col-span-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-semibold rounded-lg transition-all border border-red-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
+                  <button disabled={isProcessing || ['starting', 'stopping', 'restarting'].includes(server.status)} onClick={() => { handleAction('stop'); setSidebarOpen(false); }} className="col-span-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-semibold rounded-lg transition-all border border-red-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
                     {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-red-500/50 border-t-red-500 rounded-full animate-spin mr-1.5" /> : <Square className="w-3.5 h-3.5 mr-1.5" />} Stop
                   </button>
                 )}
-                <button disabled={isProcessing} onClick={() => { handleAction('restart'); setSidebarOpen(false); }} className="col-span-2 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium rounded-lg transition-all border border-orange-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
+                <button disabled={isProcessing || ['starting', 'stopping', 'restarting'].includes(server.status)} onClick={() => { handleAction('restart'); setSidebarOpen(false); }} className="col-span-2 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium rounded-lg transition-all border border-orange-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
                   {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-orange-500/50 border-t-orange-500 rounded-full animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />} Restart
                 </button>
              </div>
@@ -283,7 +294,8 @@ export default function ServerView() {
                <div className="flex items-center space-x-2">
                  <span className="flex h-2 w-2 relative shrink-0">
                     {server.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                    <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-600'}`}></span>
+                    {['starting', 'stopping', 'restarting'].includes(server.status) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : ['starting', 'stopping', 'restarting'].includes(server.status) ? 'bg-amber-500' : 'bg-zinc-600'}`}></span>
                  </span>
                  <span className="text-xs font-medium text-zinc-400 capitalize flex">{server.status}</span>
                </div>
@@ -302,7 +314,8 @@ export default function ServerView() {
              <div className="hidden md:flex items-center space-x-2 shrink-0">
                 <span className="flex h-2 w-2 relative shrink-0">
                    {server.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                   <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-600'}`}></span>
+                   {['starting', 'stopping', 'restarting'].includes(server.status) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>}
+                   <span className={`relative inline-flex rounded-full h-2 w-2 ${server.status === 'online' ? 'bg-emerald-500' : ['starting', 'stopping', 'restarting'].includes(server.status) ? 'bg-amber-500' : 'bg-zinc-600'}`}></span>
                 </span>
                 <span className="text-xs font-medium text-zinc-400 capitalize flex">{server.status}</span>
              </div>
@@ -310,15 +323,15 @@ export default function ServerView() {
 
              <div className="flex items-center space-x-1 sm:space-x-2 shrink-0 ml-auto md:ml-1">
                 {server.status !== 'online' ? (
-                  <button disabled={isProcessing} onClick={() => handleAction('start')} className="p-1.5 sm:px-3 sm:py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg transition-all border border-emerald-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
+                  <button disabled={isProcessing || ['starting', 'stopping', 'restarting'].includes(server.status)} onClick={() => handleAction('start')} className="p-1.5 sm:px-3 sm:py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-semibold rounded-lg transition-all border border-emerald-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
                     {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-emerald-500/50 border-t-emerald-500 rounded-full animate-spin sm:mr-1.5" /> : <Play className="w-3.5 h-3.5 sm:mr-1.5" />} <span className="hidden sm:block">Start</span>
                   </button>
                 ) : (
-                  <button disabled={isProcessing} onClick={() => handleAction('stop')} className="p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-semibold rounded-lg transition-all border border-red-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
+                  <button disabled={isProcessing || ['starting', 'stopping', 'restarting'].includes(server.status)} onClick={() => handleAction('stop')} className="p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-semibold rounded-lg transition-all border border-red-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
                     {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-red-500/50 border-t-red-500 rounded-full animate-spin sm:mr-1.5" /> : <Square className="w-3.5 h-3.5 sm:mr-1.5" />} <span className="hidden sm:block">Stop</span>
                   </button>
                 )}
-                <button disabled={isProcessing} onClick={() => handleAction('restart')} className="p-1.5 sm:px-3 sm:py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium rounded-lg transition-all border border-orange-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
+                <button disabled={isProcessing || ['starting', 'stopping', 'restarting'].includes(server.status)} onClick={() => handleAction('restart')} className="p-1.5 sm:px-3 sm:py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 font-medium rounded-lg transition-all border border-orange-500/20 flex items-center justify-center text-xs shadow-sm disabled:opacity-50">
                   {isProcessing ? <div className="w-3.5 h-3.5 border-2 border-orange-500/50 border-t-orange-500 rounded-full animate-spin sm:mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 sm:mr-1.5" />} <span className="hidden sm:block">Restart</span>
                 </button>
              </div>
@@ -354,6 +367,13 @@ export default function ServerView() {
       </div>
 
       </div>
+
+      {actionError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-[#1a1a1c] border border-red-500/30 shadow-xl rounded-xl px-4 py-3 max-w-sm w-[calc(100%-2rem)] flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-zinc-200">{actionError}</p>
+        </div>
+      )}
 
       <AnimatePresence>
         {showRamWarning && (

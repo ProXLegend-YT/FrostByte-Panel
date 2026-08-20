@@ -7,6 +7,7 @@ import { randomUUID as uuidv4, createHash } from "crypto";
 import fs from "fs-extra";
 import path from "path";
 import { getPlayitStatus, startPlayitTunnel, stopPlayitTunnel, resetPlayitTunnel } from "../services/playit.js";
+import { acquireOperationLock, releaseOperationLock, broadcastServerState, getServerOperation } from "../services/serverOperations.js";
 // NOTE: archiver is intentionally never statically imported here. Its newer
 // major versions are published as ESM-only, and esbuild compiles a static
 // `import` into a `require()` call in the CJS bundle this project builds —
@@ -62,6 +63,8 @@ export const getServers = async (req: Request, res: Response) => {
       const status = await getContainerStatus(server.containerId);
       server.status = status?.State?.Running ? "online" : "offline";
     }
+    const inProgressOp = getServerOperation(server.id);
+    if (inProgressOp) server.status = inProgressOp;
     return server;
   }));
 
@@ -83,6 +86,13 @@ export const getServer = async (req: Request, res: Response) => {
 
   const status = await getContainerStatus(server.containerId);
   server.status = status?.State?.Running ? "online" : "offline";
+  // If a start/stop/restart is currently in progress for this server,
+  // surface that instead of the plain online/offline derived above — the
+  // container's actual Running state can lag a few hundred ms behind the
+  // operation that's driving it, and "offline" while a start is already
+  // underway reads as broken/stuck to anyone watching the UI.
+  const inProgressOp = getServerOperation(id);
+  if (inProgressOp) server.status = inProgressOp;
   res.json(server);
 };
 
@@ -437,6 +447,10 @@ export const deleteServer = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Only admins can delete servers" });
     }
 
+    // Clear any stale operation lock so it can't linger in memory after
+    // the server it refers to no longer exists.
+    releaseOperationLock(id);
+
     if (server.containerId) {
       await deleteContainer(server.containerId);
     }
@@ -473,13 +487,29 @@ export const deleteServer = async (req: Request, res: Response) => {
 };
 
 export const startServer = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const existingOp = acquireOperationLock(id, "starting");
+  if (existingOp) {
+    return res.status(409).json({ error: `Server is already ${existingOp}. Please wait for that to finish.` });
+  }
   try {
-    const { id } = req.params;
     const servers = await readJSON("servers.json") || [];
     const server = servers.find((s: any) => s.id === id);
     if (!server || !server.containerId) {
+      releaseOperationLock(id);
       return res.status(404).json({ error: "Not found" });
     }
+
+    // Idempotency: if it's already running, don't re-run the start
+    // sequence (which includes container recreation logic below) — just
+    // confirm success. Repeated identical requests should be safe.
+    const currentStatus = await getContainerStatus(server.containerId).catch(() => null);
+    if (currentStatus?.State?.Running) {
+      releaseOperationLock(id);
+      broadcastServerState(id, "online");
+      return res.json({ success: true, alreadyRunning: true });
+    }
+
     try {
       await startContainer(server.containerId);
     } catch (startErr: any) {
@@ -502,21 +532,38 @@ export const startServer = async (req: Request, res: Response) => {
     logActivity({ actorId: (req as any).user.id, actorUsername: (req as any).user.username, action: "server.start", target: server.name, serverId: id });
     const { notifyServerDiscord } = await import("../services/discord.js");
     notifyServerDiscord(server, "server.start").catch(() => {});
+    broadcastServerState(id, "online");
     res.json({ success: true });
   } catch (err: any) {
     console.error("Start server error:", err);
+    broadcastServerState(id, "offline");
     res.status(500).json({ error: err.message || "Failed to start server" });
+  } finally {
+    releaseOperationLock(id);
   }
 };
 
 export const stopServer = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const existingOp = acquireOperationLock(id, "stopping");
+  if (existingOp) {
+    return res.status(409).json({ error: `Server is already ${existingOp}. Please wait for that to finish.` });
+  }
   try {
-    const { id } = req.params;
     const servers = await readJSON("servers.json") || [];
     const server = servers.find((s: any) => s.id === id);
     if (!server || !server.containerId) {
+      releaseOperationLock(id);
       return res.status(404).json({ error: "Not found" });
     }
+
+    const currentStatus = await getContainerStatus(server.containerId).catch(() => null);
+    if (currentStatus && !currentStatus.State?.Running) {
+      releaseOperationLock(id);
+      broadcastServerState(id, "offline");
+      return res.json({ success: true, alreadyStopped: true });
+    }
+
     try {
       await stopContainer(server.containerId);
     } catch (stopErr: any) {
@@ -529,19 +576,27 @@ export const stopServer = async (req: Request, res: Response) => {
     logActivity({ actorId: (req as any).user.id, actorUsername: (req as any).user.username, action: "server.stop", target: server.name, serverId: id });
     const { notifyServerDiscord } = await import("../services/discord.js");
     notifyServerDiscord(server, "server.stop").catch(() => {});
+    broadcastServerState(id, "offline");
     res.json({ success: true });
   } catch (err: any) {
     console.error("Stop server error:", err);
     res.status(500).json({ error: err.message || "Failed to stop server" });
+  } finally {
+    releaseOperationLock(id);
   }
 };
 
 export const restartServer = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const existingOp = acquireOperationLock(id, "restarting");
+  if (existingOp) {
+    return res.status(409).json({ error: `Server is already ${existingOp}. Please wait for that to finish.` });
+  }
   try {
-    const { id } = req.params;
     const servers = await readJSON("servers.json") || [];
     const server = servers.find((s: any) => s.id === id);
     if (!server || !server.containerId) {
+      releaseOperationLock(id);
       return res.status(404).json({ error: "Not found" });
     }
     try {
@@ -564,10 +619,14 @@ export const restartServer = async (req: Request, res: Response) => {
     }
     await attachContainerSocket(server.containerId, server.id);
     logActivity({ actorId: (req as any).user.id, actorUsername: (req as any).user.username, action: "server.restart", target: server.name, serverId: id });
+    broadcastServerState(id, "online");
     res.json({ success: true });
   } catch (err: any) {
     console.error("Restart server error:", err);
+    broadcastServerState(id, "offline");
     res.status(500).json({ error: err.message || "Failed to restart server" });
+  } finally {
+    releaseOperationLock(id);
   }
 };
 

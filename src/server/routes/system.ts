@@ -775,4 +775,44 @@ router.delete("/templates/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+// --- Nodes ---
+// Node CRUD is admin-only — this is infrastructure, not something a
+// regular user should see or manage. The agent itself authenticates
+// through a completely separate channel (the /agent socket namespace in
+// server.ts), not these routes.
+
+router.get("/nodes", async (req, res) => {
+  const user = (req as any).user;
+  if (user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+  const { listNodes } = await import("../services/nodes.js");
+  const nodes = await listNodes();
+  // secretHash never leaves the server, even to admins — there's no
+  // legitimate reason for it to be visible once the node is registered.
+  res.json(nodes.map(({ secretHash, ...safe }) => safe));
+});
+
+router.post("/nodes", async (req, res) => {
+  const user = (req as any).user;
+  if (user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+  const { name } = req.body;
+  if (!name || !String(name).trim()) return res.status(400).json({ error: "Node name is required." });
+
+  const { createNode } = await import("../services/nodes.js");
+  const { node, rawSecret } = await createNode(String(name).trim().slice(0, 60), user.username);
+  const { secretHash, ...safeNode } = node;
+  // rawSecret is returned exactly once, here, at creation — the frontend
+  // must show it to the admin immediately since it can never be retrieved
+  // again after this response.
+  res.json({ node: safeNode, secret: rawSecret });
+});
+
+router.delete("/nodes/:id", async (req, res) => {
+  const user = (req as any).user;
+  if (user.role !== "admin" && user.role !== "owner") return res.status(403).json({ error: "Forbidden" });
+  const { deleteNode } = await import("../services/nodes.js");
+  const found = await deleteNode(req.params.id);
+  if (!found) return res.status(404).json({ error: "Node not found." });
+  res.json({ success: true });
+});
+
 export default router;

@@ -1,0 +1,12 @@
+{
+  "name": "frostbyte-agent",
+  "version": "0.1.0",
+  "description": "FrostByte Panel remote node agent. Run this on any VPS you want to register as a node.",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}

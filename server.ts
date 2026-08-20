@@ -144,6 +144,67 @@ io.on("connection", (socket) => {
   });
 });
 
+// --- FrostByte Agent namespace ---
+// Deliberately a separate namespace from the default one above, with its
+// own auth middleware. Agents authenticate with a per-node secret (issued
+// once at node creation, verified by hash — see services/nodes.ts), not a
+// user JWT. Keeping this fully separate from the user-facing socket means
+// a bug in one auth path can't accidentally grant access via the other.
+const agentNamespace = io.of("/agent");
+
+agentNamespace.use(async (socket, next) => {
+  const { nodeId, secret } = socket.handshake.auth || {};
+  if (!nodeId || !secret) return next(new Error("Missing node credentials"));
+  try {
+    const { verifyNodeSecret } = await import("./src/server/services/nodes.js");
+    const node = await verifyNodeSecret(nodeId, secret);
+    if (!node) return next(new Error("Invalid node credentials"));
+    (socket as any).nodeId = nodeId;
+    next();
+  } catch (err) {
+    next(new Error("Authentication error"));
+  }
+});
+
+agentNamespace.on("connection", (socket) => {
+  const nodeId = (socket as any).nodeId;
+  console.log(`[Agent] Node ${nodeId} connected.`);
+
+  socket.on("heartbeat", async (data) => {
+    try {
+      const { recordHeartbeat } = await import("./src/server/services/nodes.js");
+      await recordHeartbeat(nodeId, data?.telemetry || null, data?.agentVersion || "unknown");
+    } catch (e) {
+      console.error(`[Agent] Failed to record heartbeat for ${nodeId}:`, e);
+    }
+  });
+
+  socket.on("disconnect", async () => {
+    console.log(`[Agent] Node ${nodeId} disconnected.`);
+    try {
+      const { markNodeOffline } = await import("./src/server/services/nodes.js");
+      await markNodeOffline(nodeId);
+    } catch (e) {
+      console.error(`[Agent] Failed to mark ${nodeId} offline:`, e);
+    }
+  });
+});
+
+// Catches the case a clean "disconnect" event doesn't — a network
+// partition or an ungracefully killed agent process leaves the socket
+// looking connected until Socket.IO's own ping timeout, and separately,
+// nothing here would notice if an agent just silently stopped sending
+// heartbeats while technically remaining connected. Runs independently
+// of socket events for that reason.
+setInterval(async () => {
+  try {
+    const { sweepStaleNodes } = await import("./src/server/services/nodes.js");
+    await sweepStaleNodes();
+  } catch (e) {
+    console.error("[Agent] Stale node sweep failed:", e);
+  }
+}, 15_000);
+
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "25mb" }));

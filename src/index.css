@@ -12,7 +12,7 @@
  * tokens) so they can be overridden at runtime via inline styles on
  * :root from ThemeContext, without a rebuild. New utility classes below
  * reference them; this intentionally does NOT rewrite the ~380 existing
- * hardcoded cyan-*/sky-* Tailwind classes across the app — that would be
+ * hardcoded cyan / sky Tailwind classes across the app — that would be
  * a large, hard-to-verify mechanical refactor. Instead, the highest-impact
  * surfaces (primary buttons, active nav states, focus rings) are migrated
  * to these classes so the theme picker has a real, visible effect without

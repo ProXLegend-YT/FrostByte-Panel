@@ -91,6 +91,14 @@ async function collectTelemetry() {
 console.log(`FrostByte Agent v${AGENT_VERSION} starting...`);
 console.log(`Connecting to ${PANEL_URL} as node ${NODE_ID}`);
 
+if (!/^https?:\/\//.test(PANEL_URL)) {
+  console.error(
+    `PANEL_URL doesn't look right: "${PANEL_URL}"\n` +
+    `It needs to include the protocol, e.g. https://panel.example.com (no trailing slash).`
+  );
+  process.exit(1);
+}
+
 const socket = io(`${PANEL_URL}/agent`, {
   auth: { nodeId: NODE_ID, secret: NODE_SECRET },
   reconnection: true,
@@ -123,8 +131,18 @@ socket.on("disconnect", (reason) => {
   }
 });
 
+let connectErrorCount = 0;
 socket.on("connect_error", (err) => {
+  connectErrorCount++;
   console.error(`Connection error: ${err.message}`);
+  if (connectErrorCount === 3) {
+    console.error(
+      "\nStill failing after several attempts. Common causes:\n" +
+      "  - PANEL_URL is wrong or the panel isn't reachable from this machine\n" +
+      "  - NODE_ID or NODE_SECRET don't match what the panel issued (the secret is shown only once at creation)\n" +
+      "  - The panel's reverse proxy / tunnel isn't forwarding WebSocket upgrades (see the Playit/Cloudflare Tunnel notes in the panel's chat history if you hit this)\n"
+    );
+  }
 });
 
 process.on("SIGINT", () => {

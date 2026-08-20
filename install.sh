@@ -894,6 +894,162 @@ do_system_info() {
   pause
 }
 
+# --- Step: server management (start/stop/status via PM2) -----------------------
+do_server_management() {
+  while true; do
+    banner
+    echo -e "${W} Server Management${NC}\n"
+    if command_exists pm2; then
+      pm2 status 2>/dev/null
+    else
+      warn "PM2 isn't installed."
+    fi
+    echo
+    echo -e " ${W}[1]${NC} Start panel"
+    echo -e " ${W}[2]${NC} Stop panel"
+    echo -e " ${W}[3]${NC} Restart panel"
+    echo -e " ${W}[4]${NC} View live logs (Ctrl+C to exit)"
+    echo -e " ${RED}[0]${NC} Back"
+    echo -ne "\n ${CYAN}➜${NC} ${W}Choose an option:${NC} "
+    read -r sub_choice
+    case "$sub_choice" in
+      1) pm2 start frostbyte-panel 2>/dev/null || (cd "$DIR_NAME" && pm2 start ecosystem.config.cjs); pause ;;
+      2) pm2 stop frostbyte-panel 2>/dev/null; pause ;;
+      3) do_restart ;;
+      4) pm2 logs frostbyte-panel ;;
+      0) return ;;
+      *) fail "Invalid option."; sleep 1 ;;
+    esac
+  done
+}
+
+# --- Step: logs & diagnostics ---------------------------------------------------
+do_logs_diagnostics() {
+  while true; do
+    banner
+    echo -e "${W} Logs & Diagnostics${NC}\n"
+    echo -e " ${W}[1]${NC} Tail PM2 output log"
+    echo -e " ${W}[2]${NC} Tail PM2 error log"
+    echo -e " ${W}[3]${NC} View crash log (uncaught exceptions)"
+    echo -e " ${RED}[0]${NC} Back"
+    echo -ne "\n ${CYAN}➜${NC} ${W}Choose an option:${NC} "
+    read -r sub_choice
+    case "$sub_choice" in
+      1) pm2 logs frostbyte-panel --lines 100 --nostream 2>/dev/null; pause ;;
+      2) pm2 logs frostbyte-panel --err --lines 100 --nostream 2>/dev/null; pause ;;
+      3)
+        if [[ -f "$DIR_NAME/.data/crash.log" ]]; then
+          tail -n 50 "$DIR_NAME/.data/crash.log"
+        else
+          ok "No crash log found — panel hasn't hit an uncaught exception."
+        fi
+        pause
+        ;;
+      0) return ;;
+      *) fail "Invalid option."; sleep 1 ;;
+    esac
+  done
+}
+
+# --- Step: backup & restore (whole-panel install, not in-app server backups) ---
+do_backup_restore() {
+  banner
+  echo -e "${W} Backup & Restore${NC}\n"
+  echo -e "${YELLOW}Note:${NC} this backs up the panel's own data (users, settings, node registrations)"
+  echo -e "and .env — NOT individual game server files, which already have their own"
+  echo -e "backup system inside the panel UI.\n"
+  echo -e " ${W}[1]${NC} Create backup"
+  echo -e " ${W}[2]${NC} List backups"
+  echo -e " ${RED}[0]${NC} Back"
+  echo -ne "\n ${CYAN}➜${NC} ${W}Choose an option:${NC} "
+  read -r sub_choice
+  case "$sub_choice" in
+    1)
+      if [[ ! -d "$DIR_NAME" ]]; then
+        fail "'$DIR_NAME' not found here."
+      else
+        mkdir -p panel-backups
+        local ts
+        ts=$(date +%Y%m%d-%H%M%S)
+        tar -czf "panel-backups/frostbyte-panel-data-${ts}.tar.gz" -C "$DIR_NAME" .data .env 2>/dev/null
+        if [[ $? -eq 0 ]]; then
+          ok "Backup created: panel-backups/frostbyte-panel-data-${ts}.tar.gz"
+        else
+          fail "Backup failed — check that $DIR_NAME/.data and .env exist."
+        fi
+      fi
+      ;;
+    2)
+      if [[ -d panel-backups ]]; then
+        ls -lh panel-backups/ 2>/dev/null
+      else
+        warn "No backups created yet."
+      fi
+      ;;
+    0) return ;;
+    *) fail "Invalid option." ;;
+  esac
+  pause
+}
+
+# --- Step: node management (uses the panel's real /api/system/nodes) -----------
+do_node_management() {
+  banner
+  echo -e "${W} Node Management${NC}\n"
+
+  if [[ ! -f "$DIR_NAME/.data/nodes.json" ]]; then
+    warn "No nodes.json found — install/run the panel first, then register a node from Settings in the web UI."
+    pause
+    return
+  fi
+
+  if ! command_exists node; then
+    fail "Node.js is required to read node data."
+    pause
+    return
+  fi
+
+  node -e "
+    const fs = require('fs');
+    const path = '$DIR_NAME/.data/nodes.json';
+    try {
+      const nodes = JSON.parse(fs.readFileSync(path, 'utf8'));
+      if (!nodes.length) { console.log('No nodes registered yet. Add one from the panel\\'s Settings page.'); process.exit(0); }
+      console.log('Total nodes: ' + nodes.length + '\\n');
+      for (const n of nodes) {
+        const t = n.telemetry;
+        console.log('  ' + n.name + '  [' + n.status + ']');
+        if (t) console.log('    CPU ' + t.cpuPercent + '%  RAM ' + (t.ramUsedMb/1024).toFixed(1) + '/' + (t.ramTotalMb/1024).toFixed(1) + 'GB  Disk ' + t.diskUsedGb + '/' + t.diskTotalGb + 'GB');
+        console.log('    Last heartbeat: ' + (n.lastHeartbeatAt || 'never'));
+      }
+    } catch (e) {
+      console.log('Could not read nodes.json: ' + e.message);
+    }
+  "
+  echo
+  echo -e "${YELLOW}Note:${NC} adding, removing, and generating install commands for nodes is done"
+  echo -e "from the panel's web UI (Settings → Nodes), not from this menu — that's where the"
+  echo -e "one-time node secret is shown, and it shouldn't be handled by a script."
+  echo
+  echo -e " ${W}[1]${NC} Restart the agent on THIS machine (if one is running here)"
+  echo -e " ${RED}[0]${NC} Back"
+  echo -ne "\n ${CYAN}➜${NC} ${W}Choose an option:${NC} "
+  read -r sub_choice
+  case "$sub_choice" in
+    1)
+      if command_exists pm2 && pm2 describe frostbyte-agent >/dev/null 2>&1; then
+        pm2 restart frostbyte-agent
+        ok "Agent restarted."
+      else
+        warn "No PM2 process named 'frostbyte-agent' found on this machine. If you started the agent manually (e.g. with 'node agent.js' directly), stop and restart it in that terminal instead."
+      fi
+      pause
+      ;;
+    0) return ;;
+    *) fail "Invalid option."; sleep 1 ;;
+  esac
+}
+
 # --- Main menu -----------------------------------------------------------------
 while true; do
   banner
@@ -901,6 +1057,10 @@ while true; do
   echo -e " ${W}[2]${NC} Update FrostByte Panel"
   echo -e " ${W}[3]${NC} Restart FrostByte Panel"
   echo -e " ${W}[4]${NC} System Info"
+  echo -e " ${W}[5]${NC} Server Management"
+  echo -e " ${W}[6]${NC} Backup & Restore"
+  echo -e " ${W}[7]${NC} Logs & Diagnostics"
+  echo -e " ${W}[8]${NC} Node Management"
   echo -e " ${RED}[0]${NC} Exit"
   echo -e " ${G}────────────────────────────────────────────────────────────────────────${NC}"
   echo -ne " ${CYAN}➜${NC} ${W}Choose an option:${NC} "
@@ -911,6 +1071,10 @@ while true; do
     2) do_update ;;
     3) do_restart ;;
     4) do_system_info ;;
+    5) do_server_management ;;
+    6) do_backup_restore ;;
+    7) do_logs_diagnostics ;;
+    8) do_node_management ;;
     0) echo -e "\n${G}Goodbye.${NC}"; exit 0 ;;
     *) fail "Invalid option."; sleep 1 ;;
   esac
